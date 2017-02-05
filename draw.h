@@ -3,10 +3,20 @@
 
 namespace Draw
 {
+	////// BASIC FUNCTIONS ////////////////////////////////////////////////////
+	
 	void init();		// TODO: return and error flag or something?
 	void shutdown();
 	void begin();
 	void end();
+
+	////// SET STATE //////////////////////////////////////////////////////////
+
+	void setColor(GLfloat r, GLfloat g, GLfloat b, GLfloat a = 1.0f);
+
+	////// PRIMATIVES /////////////////////////////////////////////////////////
+
+	void line( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2 );
 	void quad( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2 );
 	void point( float x, float y );
 }
@@ -18,6 +28,7 @@ namespace Draw
 	GLuint vao_ = 0;
 	GLuint vbo_ = 0;
 	GLuint shader_program_ = 0;
+	GLint colour_uniform_ = -1;
 
 	void init()
 	{
@@ -30,10 +41,11 @@ namespace Draw
 		    "}";
 		const GLchar* frag_src =
 			"#version 150 core\n"
+			"uniform vec4 colour;"
 			"out vec4 outColour;"
 			"void main()"
 			"{"
-			"    outColour = vec4(1.0, 1.0, 1.0, 1.0);"
+			"    outColour = colour;"
 			"}";
 		GLuint vertex_shader_ = glCreateShader(GL_VERTEX_SHADER);
 		GLuint fragment_shader_ = glCreateShader(GL_FRAGMENT_SHADER);
@@ -81,6 +93,10 @@ namespace Draw
 		glBindFragDataLocation( shader_program_, 0, "outColour");
 		glLinkProgram( shader_program_ );
 		glUseProgram( shader_program_ );
+		glDeleteShader(vertex_shader_);
+		glDeleteShader(fragment_shader_);
+
+		colour_uniform_ = glGetUniformLocation(shader_program_, "colour");
 
 		glGenVertexArrays(1, &vao_);
 		glBindVertexArray(vao_);
@@ -88,17 +104,17 @@ namespace Draw
 		glBindBuffer(GL_ARRAY_BUFFER, vbo_);
 
 		GLint posAtrib = glGetAttribLocation(shader_program_, "vPos");
-		if( posAtrib == -1 ) printf("aaaasarstatrs\n");
+		if( posAtrib == -1 ) printf("ERROR: position attribute not found in shader\n");
 		glEnableVertexAttribArray(posAtrib);
 		glVertexAttribPointer(posAtrib, 2, GL_FLOAT, GL_FALSE, 0, 0);
 
-		// glBindVertexArray(0);
-		// glBindBuffer(GL_ARRAY_BUFFER, 0);
-		// glUseProgram(0);
+		glBindVertexArray(0);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		glUseProgram(0);
 	}
 	void shutdown()
 	{
-
+		glDeleteProgram(shader_program_);
 	}
 	void begin()
 	{
@@ -107,7 +123,28 @@ namespace Draw
 	}
 	void end()
 	{
+		// TOOD: This should restore the previous state instead
+		glUseProgram(0);
+		glBindVertexArray(0);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+	}
 
+	void setColor(GLfloat r, GLfloat g, GLfloat b, GLfloat a )
+	{
+		glUniform4f( colour_uniform_, r, g, b, a );
+	}
+
+	void line( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2 )
+	{
+		glBindVertexArray(vao_);
+		glBindBuffer(GL_ARRAY_BUFFER, vbo_);
+
+		GLfloat verts[] = {
+			x1, y1, x2, y2
+		};
+
+		glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STREAM_DRAW);
+		glDrawArrays(GL_LINES, 0, 2);
 	}
 	void quad( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2 )
 	{
@@ -115,25 +152,19 @@ namespace Draw
 		glBindBuffer(GL_ARRAY_BUFFER, vbo_);
 
 		GLfloat verts[] = {
-		     1.0f,  0.5f, // Vertex 1 (X, Y)
-		     0.5f, -0.5f, // Vertex 2 (X, Y)
-		    -0.5f, -0.5f  // Vertex 3 (X, Y)
+			x1, y1, x2, y1, x2, y2,
+			x1, y1, x2, y2, x1, y2
 		};
 
 		glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STREAM_DRAW);
-		glDrawArrays(GL_TRIANGLES, 0, 3);
+		glDrawArrays(GL_TRIANGLES, 0, 6);
 	}
 	void point( GLfloat x, GLfloat y )
 	{
-		glUseProgram(shader_program_);
 		glBindVertexArray(vao_);
 		glBindBuffer(GL_ARRAY_BUFFER, vbo_);
 
-		GLfloat verts[] = {
-		     0.0f,  0.5f, // Vertex 1 (X, Y)
-		     0.5f, -0.5f, // Vertex 2 (X, Y)
-		    -0.5f, -0.5f  // Vertex 3 (X, Y)
-		};
+		GLfloat verts[] = { x, y };
 
 		glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STREAM_DRAW);
 		glDrawArrays(GL_POINTS, 0, 2);
