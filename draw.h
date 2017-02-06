@@ -33,25 +33,31 @@
 
 namespace TJH_DRAW_NAMESPACE
 {
-    // BASIC FUNCTIONS /////////////////////////////////////////////////////
+    // LIBRARY FUNCTIONS ///////////////////////////////////////////////////////
     
     void init();        // TODO: return and error flag or something?
     void shutdown();
     void begin();
     void end();
 
-    // SET STATE ///////////////////////////////////////////////////////////
+    // STATE ///////////////////////////////////////////////////////////////////
 
     // TODO: void setResolution( int width, int height );
-    //      This would scale the 
+    //      This would scale all subsequent calls to use the given virtual
+    //      resolution. This would mean 'points' would have to be actual
+    //      quads. Allowing the user to do something like setResolution(32,32)
+    //      Then have a cool pixel art looking type thing
+    void clear( GLfloat r, GLfloat g, GLfloat b, GLfloat a = 1.0f );
     void setColor( GLfloat r, GLfloat g, GLfloat b, GLfloat a = 1.0f );
 
-    // PRIMATIVES //////////////////////////////////////////////////////////
+    // PRIMATIVES //////////////////////////////////////////////////////////////
 
-    void line( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2 );
-    void circle( GLfloat x, GLfloat y, GLfloat radius );
-    void quad( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2 );
     void point( GLfloat x, GLfloat y );
+    void line( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2 );
+    void quad( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2 );
+    void circle( GLfloat x, GLfloat y, GLfloat radius, int segments = 16 );
+
+    extern const float PI;
 }
 
 ////// IMPLEMENTATION //////////////////////////////////////////////////////////
@@ -59,11 +65,16 @@ namespace TJH_DRAW_NAMESPACE
     
 namespace TJH_DRAW_NAMESPACE
 {
+    // PUBLIC MEMBERS
+    const float PI = 3.14159265359;
+
     // 'PRIVATE' MEMBERS
     GLuint vao_ = 0;
     GLuint vbo_ = 0;
     GLuint shader_program_ = 0;
     GLint colour_uniform_ = -1;
+
+    // LIBRARY FUNCTIONS ///////////////////////////////////////////////////////
 
     void init()
     {
@@ -147,15 +158,18 @@ namespace TJH_DRAW_NAMESPACE
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         glUseProgram(0);
     }
+
     void shutdown()
     {
         glDeleteProgram(shader_program_);
     }
+
     void begin()
     {
         // store previous values and set stuff, see dear imgui
         glUseProgram(shader_program_);
     }
+
     void end()
     {
         // TOOD: This should restore the previous state instead
@@ -164,11 +178,31 @@ namespace TJH_DRAW_NAMESPACE
         glBindBuffer(GL_ARRAY_BUFFER, 0);
     }
 
+    // STATE ///////////////////////////////////////////////////////////////////
+
+    void clear( GLfloat r, GLfloat g, GLfloat b, GLfloat a )
+    {
+        glClearColor( r, g, b, a );
+        glClear( GL_COLOR_BUFFER_BIT );
+    }
+
     void setColor(GLfloat r, GLfloat g, GLfloat b, GLfloat a )
     {
         glUniform4f( colour_uniform_, r, g, b, a );
     }
 
+    // PRIMATIVES //////////////////////////////////////////////////////////////
+
+    void point( GLfloat x, GLfloat y )
+    {
+        glBindVertexArray(vao_);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo_);
+
+        GLfloat verts[] = { x, y };
+
+        glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STREAM_DRAW);
+        glDrawArrays(GL_POINTS, 0, 1);
+    }
     void line( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2 )
     {
         glBindVertexArray(vao_);
@@ -194,15 +228,21 @@ namespace TJH_DRAW_NAMESPACE
         glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STREAM_DRAW);
         glDrawArrays(GL_TRIANGLES, 0, 6);
     }
-    void point( GLfloat x, GLfloat y )
+    void circle( GLfloat x, GLfloat y, GLfloat radius, int segments )
     {
-        glBindVertexArray(vao_);
-        glBindBuffer(GL_ARRAY_BUFFER, vbo_);
+        GLfloat* verts = new GLfloat[segments * 2];
+        float fraction = (PI*2) / (float)segments;
 
-        GLfloat verts[] = { x, y };
+        for( int i = 0; i < segments; i++ )
+        {
+            verts[i*2]   = x + sin(fraction*i) * radius;
+            verts[i*2+1] = y + cos(fraction*i) * radius;
+        }
 
-        glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STREAM_DRAW);
-        glDrawArrays(GL_POINTS, 0, 2);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 2 * segments, verts, GL_STREAM_DRAW);
+        glDrawArrays(GL_LINE_LOOP, 0, segments);
+
+        delete[] verts;
     }
 }
 
