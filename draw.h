@@ -12,13 +12,15 @@ namespace Draw
 
 	////// SET STATE //////////////////////////////////////////////////////////
 
+	// TODO: void setResolution( int width, int height );
+	//		This would scale the 
 	void setColor(GLfloat r, GLfloat g, GLfloat b, GLfloat a = 1.0f);
 
 	////// PRIMATIVES /////////////////////////////////////////////////////////
 
 	void line( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2 );
 	void quad( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2 );
-	void point( float x, float y );
+	void point( GLfloat x, GLfloat y );
 }
 
 #ifdef TJH_DRAW_IMPLEMENTATION
