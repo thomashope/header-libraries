@@ -13,25 +13,29 @@
 //
 // Some basic GLSL code to get you started
 /*
-const GLchar* vert_src =
-    "#version 150\n"
-    "in vec3 vPos;"
-    "in vec3 vCol;"
-    "out vec3 fCol;"
-    "void main()"
-    "{"
-    "   gl_Position = vec4(vPos, 1.0);"
-    "   fCol = vCol;"
-    "}";
-*//*
-const GLchar* frag_src =
-    "#version 150\n"
-    "in vec3 fCol;"
-    "out vec4 outDiffuse;"
-    "void main()"
-    "{"
-    "   outDiffuse = vec4(fCol, 1);"
-    "}";
+// A handy macro to help you define glsl directly in your source code
+// produces unhelpful error messages
+#define GLSL(src) "#version 150 core\n" #src
+
+const GLchar* vert_src = GLSL(
+    in vec3 vPos;
+    in vec3 vCol;
+    out vec3 fCol;
+    void main()
+    {
+        gl_Position = vec4(vPos, 1.0);
+        fCol = vCol;
+    }
+    );
+
+const GLchar* frag_src = GLSL(
+    in vec3 fCol;
+    out vec4 outDiffuse;
+    void main()
+    {
+       outDiffuse = vec4(fCol, 1);
+    }
+    );
 */
 
 ////// LIBRARY OPTIONS /////////////////////////////////////////////////////////
@@ -44,15 +48,16 @@ const GLchar* frag_src =
 // Change this to use a custom printf like function for your platform, for example SDL_Log
 #define TJH_SHADER_PRINTF printf
 
-#define TJH_WINDOW_SDL_H_LOCATION <SDL2/SDL.h>
-#define TJH_WINDOW_GLEW_H_LOCATION <GL/glew.h>
+#define TJH_WINDOW_SDL_H_LOCATION           <SDL2/SDL.h>
+#define TJH_WINDOW_SDL_OPENGL_H_LOCATION    <SDL2/SDL_opengl.h>
+#define TJH_WINDOW_GLEW_H_LOCATION          <GL/glew.h>
 
 ////// HEADER //////////////////////////////////////////////////////////////////
 
 // TODO: can i reduce these includes? Remove dependancy on SDL2? At least in header section?
-#include <SDL2/SDL.h>
-#include <GL/glew.h>
-#include <SDL2/SDL_opengl.h>
+#include TJH_WINDOW_SDL_H_LOCATION
+#include TJH_WINDOW_GLEW_H_LOCATION
+#include TJH_WINDOW_SDL_OPENGL_H_LOCATION
 #include <string>
 
 class TJH_SHADER_TYPENAME
@@ -65,13 +70,16 @@ public:
     bool init();
     void shutdown();
 
-    // Returns true if the source files were loaded successfully, false if they could not be loaded
+    // Returns true if the source files were loaded successfully
+    // false if they could not be loaded
     bool loadVertexSourceFile( std::string file_path );
     bool loadFragmentSourceFile( std::string file_path ); 
+    bool loadGeometrySourceFile( std::string file_path ); 
 
     // Sets the shader source strings directly
     void setVertexSourceString( const std::string& source ) { vertex_source_ = source; }
     void setFragmentSourceString( const std::string& source ) { fragment_source_ = source; }
+    void setGeometrySourceString( const std::string& source ) { geometry_source_ = source; }
 
     // Bind the shader to the OpenGL context, ready for use
     void bind();
@@ -83,16 +91,22 @@ public:
 
 private:
     // Loads the text file 'filename' and passes the contents to the pointer
+    // returns true on success
     bool load_file( std::string filename, std::string* file_contents  );
+    // returns true on success
+    bool compile_shader( GLenum type, GLuint& shader, const std::string& source );
+    // returns true if the shader did compile ok
     bool did_shader_compile_ok( GLuint shader );
     void get_shader_base_path();
 
     std::string vertex_source_;
     std::string fragment_source_;
+    std::string geometry_source_;
 
     GLuint program_;
     GLuint vertex_shader_;
     GLuint fragment_shader_;
+    GLuint geometry_shader_;
 
     static std::string shader_base_path_;
 };
@@ -119,33 +133,19 @@ std::string TJH_SHADER_TYPENAME::shader_base_path_ = "";
 
 TJH_SHADER_TYPENAME::TJH_SHADER_TYPENAME() :
 vertex_shader_(0),
-fragment_shader_(0)
+fragment_shader_(0),
+geometry_shader_(0)
 {}
 
 bool TJH_SHADER_TYPENAME::init()
 {
-    bool success = true;
-    const GLchar* source_ptr = nullptr;
+    bool error = false;
+    program_ = glCreateProgram();
 
     if( !vertex_source_.empty() )
     {
-        vertex_shader_ = glCreateShader( GL_VERTEX_SHADER );
-        if( vertex_shader_ == 0 )
-        {
-            TJH_SHADER_PRINTF( "ERROR could not create vertex shader\n" );
-            success = false;
-        }
-
-        // Shader strings have to be converted to const GLchar* so OpenGL can compile them
-        source_ptr = (const GLchar*)vertex_source_.c_str();
-        
-        glShaderSource( vertex_shader_, 1, &source_ptr, NULL );
-        glCompileShader( vertex_shader_ );
-
-        if( did_shader_compile_ok( vertex_shader_ ) )
-            vertex_source_.resize(0);
-        else
-            success = false;
+        error |= !compile_shader( GL_VERTEX_SHADER, vertex_shader_, vertex_source_ );
+        glAttachShader( program_, vertex_shader_ );
     }
     else
     {
@@ -154,35 +154,26 @@ bool TJH_SHADER_TYPENAME::init()
 
     if( !fragment_source_.empty() )
     {
-        // Create the fragment shader
-        fragment_shader_ = glCreateShader( GL_FRAGMENT_SHADER );
-        if( fragment_shader_ == 0 )
-        {
-            TJH_SHADER_PRINTF( "ERROR could not create fragment shader\n" );
-            success = false;
-        }
-
-        // Shader strings have to be converted to const GLchar* so OpenGL can compile them
-        source_ptr = (const GLchar*)fragment_source_.c_str();
-        
-        glShaderSource( fragment_shader_, 1, &source_ptr , NULL );
-        glCompileShader( fragment_shader_ );
-
-        if( did_shader_compile_ok( fragment_shader_ ) )
-            fragment_source_.resize(0);
-        else
-            success = false;
+        error |= !compile_shader( GL_FRAGMENT_SHADER, fragment_shader_, fragment_source_ );
+        glAttachShader( program_, fragment_shader_ );
     }
     else
     {
         TJH_SHADER_PRINTF( "ERROR fragment shader source was empty! (not set)\n" );
     }
 
-    if( success ) {
+    if( !geometry_source_.empty() )
+    {
+        error |= !compile_shader( GL_GEOMETRY_SHADER, geometry_shader_, geometry_source_ );
+        glAttachShader( program_, geometry_shader_ );
+    }
+    else
+    {
+        TJH_SHADER_PRINTF( "ERROR geometry shader source was empty! (not set)\n" );
+    }
+
+    if( !error ) {
          // Create the shader program, attach the vertex and fragment shaders
-        program_ = glCreateProgram();
-        glAttachShader( program_, vertex_shader_ );
-        glAttachShader( program_, fragment_shader_ );
         glBindFragDataLocation( program_, 0, "outDiffuse" );
         glLinkProgram( program_ );
 
@@ -191,12 +182,31 @@ bool TJH_SHADER_TYPENAME::init()
         // TODO: find a way of supporting this without the caller having to do extra work, on the other hand it might not be worth it
         glDetachShader( program_, vertex_shader_ );
         glDetachShader( program_, fragment_shader_ );
-        glDeleteShader( vertex_shader_ );
-        glDeleteShader( fragment_shader_ ); 
+        glDetachShader( program_, geometry_shader_ );
+        // TODO: will this cause a problem if I try to delete a shader that was never created?
+        //  If the shader is not created the value will be left at 0, which could be a valid shader
+        //      
+        if( !vertex_source_.empty() )
+        {
+            glDeleteShader( vertex_shader_ );
+            vertex_source_.clear();
+            vertex_source_.shrink_to_fit();
+        }
+        if( !fragment_source_.empty() )
+        {
+            glDeleteShader( fragment_shader_ );
+            fragment_source_.clear();
+            fragment_source_.shrink_to_fit();
+        }
+        if( !geometry_source_.empty() )
+        {
+            glDeleteShader( geometry_shader_ ); 
+            geometry_source_.clear();
+            geometry_source_.shrink_to_fit();
+        }
     }
 
-    // Return true on success, false on error
-    return success;
+    return !error;
 }
 
 void TJH_SHADER_TYPENAME::shutdown()
@@ -215,7 +225,7 @@ GLint TJH_SHADER_TYPENAME::getUniformLocation( const GLchar* name )
 {
     GLint uniform = glGetUniformLocation( program_, name );
     if( uniform == -1 ) {
-        TJH_SHADER_PRINTF("ERROR did not find uniform '%s' in shader program '%i'", name, program_ );
+        TJH_SHADER_PRINTF("ERROR did not find uniform '%s' in shader program '%i'\n", name, program_ );
     }
     return uniform;
 }
@@ -225,7 +235,7 @@ GLint TJH_SHADER_TYPENAME::getAttribLocation( const GLchar* name )
 {
     GLint attribute = glGetAttribLocation( program_, name );
     if( attribute == -1 ) {
-        TJH_SHADER_PRINTF("ERROR did not find attribute '%s' in shader program '%i'", name, program_ );
+        TJH_SHADER_PRINTF("ERROR did not find attribute '%s' in shader program '%i'\n", name, program_ );
     }
     return attribute;
 }
@@ -238,6 +248,11 @@ bool TJH_SHADER_TYPENAME::loadVertexSourceFile( std::string file_path )
 bool TJH_SHADER_TYPENAME::loadFragmentSourceFile( std::string file_path )
 {
     return load_file( file_path, &fragment_source_ );
+}
+
+bool TJH_SHADER_TYPENAME::loadGeometrySourceFile( std::string file_path )
+{
+    return load_file( file_path, &geometry_source_ );
 }
 
 // TODO: convert this to SDL rw ops and move to seperate header file
@@ -264,6 +279,24 @@ bool TJH_SHADER_TYPENAME::load_file( std::string filename, std::string* file_con
     return true;
 }
 
+bool TJH_SHADER_TYPENAME::compile_shader( GLenum type, GLuint& shader, const std::string& source )
+{
+    shader = glCreateShader( type );
+    if( shader == 0 )
+    {
+        TJH_SHADER_PRINTF( "ERROR could not create shader\n" );
+        return false;
+    }
+
+    // Shader strings have to be converted to const GLchar* so OpenGL can compile them
+    const GLchar* source_ptr = (const GLchar*)source.c_str();
+
+    glShaderSource( shader, 1, &source_ptr, NULL );
+    glCompileShader( shader );
+
+    return did_shader_compile_ok( shader );
+}
+
 bool TJH_SHADER_TYPENAME::did_shader_compile_ok( GLuint shader )
 {    
     // Check the shader was compiled succesfully
@@ -281,7 +314,7 @@ bool TJH_SHADER_TYPENAME::did_shader_compile_ok( GLuint shader )
 
         // Print the error
         // TODO: if we have the source then could we print the line that was broken?
-        TJH_SHADER_PRINTF( "ERROR: compiling shader..." );
+        TJH_SHADER_PRINTF( "ERROR: compiling shader...\n" );
         TJH_SHADER_PRINTF( "%s", buffer );
         return false;
     }
