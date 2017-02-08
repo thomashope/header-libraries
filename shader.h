@@ -49,7 +49,6 @@ const GLchar* frag_src = GLSL(
 #define TJH_SHADER_PRINTF printf
 
 #define TJH_WINDOW_SDL_H_LOCATION           <SDL2/SDL.h>
-#define TJH_WINDOW_SDL_OPENGL_H_LOCATION    <SDL2/SDL_opengl.h>
 #define TJH_WINDOW_GLEW_H_LOCATION          <GL/glew.h>
 
 ////// HEADER //////////////////////////////////////////////////////////////////
@@ -57,7 +56,6 @@ const GLchar* frag_src = GLSL(
 // TODO: can i reduce these includes? Remove dependancy on SDL2? At least in header section?
 #include TJH_WINDOW_SDL_H_LOCATION
 #include TJH_WINDOW_GLEW_H_LOCATION
-#include TJH_WINDOW_SDL_OPENGL_H_LOCATION
 #include <string>
 
 class TJH_SHADER_TYPENAME
