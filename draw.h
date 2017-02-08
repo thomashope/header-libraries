@@ -17,8 +17,9 @@
 //  3) Call `Draw::shutdown()` somewhere before you have destroyed your OpenGL
 //  context.
 //
-//  4) #include this file in all the files that want to draw stuff and call the
-//  functions!
+//  4) #include this file in all the files that want to draw stuff
+//
+//  5) Call `Draw::begin()` _draw the things_ then call `Draw::end()`
 //
 
 ////// LIBRARY OPTIONS /////////////////////////////////////////////////////////
@@ -28,6 +29,8 @@
 //
 // Change this to customise the namespace for this library
 #define TJH_DRAW_NAMESPACE Draw
+// Change this to use a custom printf like function for your platform, for example SDL_Log
+#define TJH_DRAW_PRINTF printf
 
 ////// HEADER //////////////////////////////////////////////////////////////////
 
@@ -55,6 +58,7 @@ namespace TJH_DRAW_NAMESPACE
     void point( GLfloat x, GLfloat y );
     void line( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2 );
     void quad( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2 );
+    // TODO: tri( x, y, x, y, x, y )
     void circle( GLfloat x, GLfloat y, GLfloat radius, int segments = 16 );
 
     extern const float PI;
@@ -78,14 +82,14 @@ namespace TJH_DRAW_NAMESPACE
 
     void init()
     {
-        const GLchar* vert_src =
+        const char* vert_src =
             "#version 150 core\n"
             "in vec2 vPos;"
             "void main()"
             "{"
             "    gl_Position = vec4(vPos, 0.0, 1.0);"
             "}";
-        const GLchar* frag_src =
+        const char* frag_src =
             "#version 150 core\n"
             "uniform vec4 colour;"
             "out vec4 outColour;"
@@ -95,7 +99,7 @@ namespace TJH_DRAW_NAMESPACE
             "}";
         GLuint vertex_shader_ = glCreateShader(GL_VERTEX_SHADER);
         GLuint fragment_shader_ = glCreateShader(GL_FRAGMENT_SHADER);
-        if( vertex_shader_ == 0 || fragment_shader_ == 0 ) printf("ERROR: cold not init shaders!");
+        if( vertex_shader_ == 0 || fragment_shader_ == 0 ) TJH_DRAW_PRINTF("ERROR: cold not init shaders!");
 
         // Compile and check the vertex shader
         glShaderSource( vertex_shader_, 1, &vert_src, NULL );
@@ -104,7 +108,7 @@ namespace TJH_DRAW_NAMESPACE
         glGetShaderiv( vertex_shader_, GL_COMPILE_STATUS, &status );
         if( status != GL_TRUE )
         {
-            printf("ERROR: could not compile vertex shader\n");
+            TJH_DRAW_PRINTF("ERROR: could not compile vertex shader\n");
             // Get the length of the error log
             GLint log_length = 0;
             glGetShaderiv(vertex_shader_, GL_INFO_LOG_LENGTH, &log_length);
@@ -112,7 +116,7 @@ namespace TJH_DRAW_NAMESPACE
             // Now get the error log itself
             GLchar buffer[log_length];
             glGetShaderInfoLog( vertex_shader_, log_length, NULL, buffer );
-            printf("%s\n", buffer);
+            TJH_DRAW_PRINTF("%s\n", buffer);
         }
 
         // Compile and check the fragment shader
@@ -122,7 +126,7 @@ namespace TJH_DRAW_NAMESPACE
         glGetShaderiv( fragment_shader_, GL_COMPILE_STATUS, &status );
         if( status != GL_TRUE )
         {
-            printf("ERROR: could not compile fragment shader\n");
+            TJH_DRAW_PRINTF("ERROR: could not compile fragment shader\n");
             // Get the length of the error log
             GLint log_length = 0;
             glGetShaderiv(fragment_shader_, GL_INFO_LOG_LENGTH, &log_length);
@@ -130,7 +134,7 @@ namespace TJH_DRAW_NAMESPACE
             // Now get the error log itself
             GLchar buffer[log_length];
             glGetShaderInfoLog( fragment_shader_, log_length, NULL, buffer );
-            printf("%s\n", buffer);
+            TJH_DRAW_PRINTF("%s\n", buffer);
         }
 
         shader_program_ = glCreateProgram();
@@ -150,7 +154,7 @@ namespace TJH_DRAW_NAMESPACE
         glBindBuffer(GL_ARRAY_BUFFER, vbo_);
 
         GLint posAtrib = glGetAttribLocation(shader_program_, "vPos");
-        if( posAtrib == -1 ) printf("ERROR: position attribute not found in shader\n");
+        if( posAtrib == -1 ) TJH_DRAW_PRINTF("ERROR: position attribute not found in shader\n");
         glEnableVertexAttribArray(posAtrib);
         glVertexAttribPointer(posAtrib, 2, GL_FLOAT, GL_FALSE, 0, 0);
 
