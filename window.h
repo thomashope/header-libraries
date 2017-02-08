@@ -20,6 +20,8 @@
 #define TJH_WINDOW_INCLUDE_GLEW
 // Change this to customise the namespace for this library
 #define TJH_WINDOW_NAMESPACE Window
+// Change this to use a custom printf like function for your platform, for example SDL_Log
+#define TJH_WINDOW_PRINTF printf
 
 // IMPORTANT: If any of the above options are set these must also be set correctly
 #define TJH_WINDOW_SDL_H_LOCATION <SDL2/SDL.h>
@@ -72,7 +74,7 @@ namespace TJH_WINDOW_NAMESPACE
     #ifdef TJH_WINDOW_AUTO_INIT_GLEW
         glewExperimental = GL_TRUE;
         GLenum error = glewInit();
-        if( error != GLEW_OK ) printf("ERROR: starting glew %d", error);
+        if( error != GLEW_OK ) TJH_WINDOW_PRINTF("ERROR: starting glew %d", error);
     #endif
     }
 
