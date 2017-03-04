@@ -47,7 +47,12 @@ namespace TJH_WINDOW_NAMESPACE
     void init(const char* title, int width, int height);    // Call one, can init SDL and GLEW if macros are set
     void shutdown();                                        // Shuts down SDL window, and library if asked
     void present();                                         // Flip the buffers
+    
+    // Getters
     void getSize( int* width, int* height );                // Get the current size of the window
+
+    // Returns true on success
+    bool setVsync( bool enable );
 
     // PUBLIC MEMBERS
     extern SDL_Window* sdl_window;
@@ -110,6 +115,29 @@ namespace TJH_WINDOW_NAMESPACE
     void getSize( int* width, int* height )
     {
         SDL_GetWindowSize( sdl_window, width, height );
+    }
+
+    bool setVsync( bool enable )
+    {
+        if( enable )
+        {
+            // try late swap tearing first
+            bool success = (SDL_GL_SetSwapInterval( -1 ) == 0);
+            if( success )
+            {
+                return true;
+            }
+            else
+            {
+                // If that fails try normal vsync
+                return SDL_GL_SetSwapInterval( 1 ) == 0;
+            }
+        }
+        else
+        {
+            // Pass zero to disable vysinc
+            return SDL_GL_SetSwapInterval( 0 ) == 0;
+        }
     }
 }
 
