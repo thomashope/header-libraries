@@ -1,5 +1,5 @@
-#ifndef SHADER_PROGRAM_H
-#define SHADER_PROGRAM_H
+#ifndef TJH_SHADER_H
+#define TJH_SHADER_H
 
 // TODO: add geometry shader
 // TODO: multiple output buffers
@@ -47,15 +47,14 @@ const GLchar* frag_src = GLSL(
 #define TJH_SHADER_TYPENAME Shader
 // Change this to use a custom printf like function for your platform, for example SDL_Log
 #define TJH_SHADER_PRINTF printf
-
-#define TJH_WINDOW_SDL_H_LOCATION           <SDL2/SDL.h>
-#define TJH_WINDOW_GLEW_H_LOCATION          <GL/glew.h>
+// Either set this correctly or uncomment if you would preffer shader.h did not include glew
+#define TJH_SHADER_GLEW_H_LOCATION          <GL/glew.h>
 
 ////// HEADER //////////////////////////////////////////////////////////////////
 
-// TODO: can i reduce these includes? Remove dependancy on SDL2? At least in header section?
-#include TJH_WINDOW_SDL_H_LOCATION
-#include TJH_WINDOW_GLEW_H_LOCATION
+#ifdef TJH_SHADER_GLEW_H_LOCATION
+    #include TJH_SHADER_GLEW_H_LOCATION
+#endif
 #include <string>
 
 class TJH_SHADER_TYPENAME
@@ -77,15 +76,17 @@ public:
     // Sets the shader source strings directly
     void setVertexSourceString( const std::string& source ) { vertex_source_ = source; }
     void setFragmentSourceString( const std::string& source ) { fragment_source_ = source; }
-    void setGeometrySourceString( const std::string& source ) { geometry_source_ = source; }
+    void setGeometrySourceString( const std::string& source ) { geometry_source_ = source; tried_set_geometry_source_ = true; }
+
+    static void setShaderBasePath( std::string path ) { shader_base_path_ = path; }
 
     // Bind the shader to the OpenGL context, ready for use
-    void bind();
+    void bind() const { glUseProgram( program_ ); }
 
     // Don't forget to bind shaders before trying to get uniforms or attributes
-    GLint getUniformLocation( const GLchar* name );
-    GLint getAttribLocation( const GLchar* name );
-    GLint getProgram() { return program_; }
+    GLint getUniformLocation( const GLchar* name ) const;
+    GLint getAttribLocation( const GLchar* name ) const;
+    GLint getProgram() const { return program_; }
 
 private:
     // Loads the text file 'filename' and passes the contents to the pointer
@@ -95,21 +96,24 @@ private:
     bool compile_shader( GLenum type, GLuint& shader, const std::string& source );
     // returns true if the shader did compile ok
     bool did_shader_compile_ok( GLuint shader );
-    void get_shader_base_path();
 
-    std::string vertex_source_;
-    std::string fragment_source_;
-    std::string geometry_source_;
+    // Converts GLenums such as GL_VERTEX_SHADER to a string
+    std::string glenumShaderTypeToString( GLenum type );
 
     GLuint program_;
     GLuint vertex_shader_;
     GLuint fragment_shader_;
     GLuint geometry_shader_;
 
+    std::string vertex_source_;
+    std::string fragment_source_;
+    std::string geometry_source_;
+    bool tried_set_geometry_source_;
+
     static std::string shader_base_path_;
 };
 
-#endif
+#endif // END TJH_SHADER_H
 
 ////// IMPLEMENTATION //////////////////////////////////////////////////////////
 #ifdef TJH_SHADER_IMPLEMENTATION
@@ -132,7 +136,8 @@ std::string TJH_SHADER_TYPENAME::shader_base_path_ = "";
 TJH_SHADER_TYPENAME::TJH_SHADER_TYPENAME() :
 vertex_shader_(0),
 fragment_shader_(0),
-geometry_shader_(0)
+geometry_shader_(0),
+tried_set_geometry_source_(false)
 {}
 
 bool TJH_SHADER_TYPENAME::init()
@@ -157,17 +162,20 @@ bool TJH_SHADER_TYPENAME::init()
     }
     else
     {
-        TJH_SHADER_PRINTF( "ERROR fragment shader source was empty! (not set)\n" );
+        TJH_SHADER_PRINTF( "ERROR: fragment shader source was empty! (not set)\n" );
     }
 
-    if( !geometry_source_.empty() )
+    if( tried_set_geometry_source_ )
     {
-        error |= !compile_shader( GL_GEOMETRY_SHADER, geometry_shader_, geometry_source_ );
-        glAttachShader( program_, geometry_shader_ );
-    }
-    else
-    {
-        TJH_SHADER_PRINTF( "ERROR geometry shader source was empty! (not set)\n" );
+        if( !geometry_source_.empty() )
+        {
+            error |= !compile_shader( GL_GEOMETRY_SHADER, geometry_shader_, geometry_source_ );
+            glAttachShader( program_, geometry_shader_ );
+        }
+        else
+        {
+            TJH_SHADER_PRINTF( "ERROR: geometry shader source was empty! (not set)\n" );
+        }
     }
 
     if( !error ) {
@@ -214,26 +222,21 @@ void TJH_SHADER_TYPENAME::shutdown()
     glDeleteShader( fragment_shader_ );
 }
 
-void TJH_SHADER_TYPENAME::bind()
-{
-    glUseProgram( program_ );
-}
-
-GLint TJH_SHADER_TYPENAME::getUniformLocation( const GLchar* name )
+GLint TJH_SHADER_TYPENAME::getUniformLocation( const GLchar* name ) const
 {
     GLint uniform = glGetUniformLocation( program_, name );
     if( uniform == -1 ) {
-        TJH_SHADER_PRINTF("ERROR did not find uniform '%s' in shader program '%i'\n", name, program_ );
+        TJH_SHADER_PRINTF("ERROR: did not find uniform '%s' in shader program '%i'\n", name, program_ );
     }
     return uniform;
 }
 
 
-GLint TJH_SHADER_TYPENAME::getAttribLocation( const GLchar* name )
+GLint TJH_SHADER_TYPENAME::getAttribLocation( const GLchar* name ) const
 {
     GLint attribute = glGetAttribLocation( program_, name );
     if( attribute == -1 ) {
-        TJH_SHADER_PRINTF("ERROR did not find attribute '%s' in shader program '%i'\n", name, program_ );
+        TJH_SHADER_PRINTF("ERROR: did not find attribute '%s' in shader program '%i'\n", name, program_ );
     }
     return attribute;
 }
@@ -250,22 +253,16 @@ bool TJH_SHADER_TYPENAME::loadFragmentSourceFile( std::string file_path )
 
 bool TJH_SHADER_TYPENAME::loadGeometrySourceFile( std::string file_path )
 {
+    tried_set_geometry_source_ = true;
     return load_file( file_path, &geometry_source_ );
 }
 
-// TODO: convert this to SDL rw ops and move to seperate header file
 bool TJH_SHADER_TYPENAME::load_file( std::string filename, std::string* file_contents )
-{
-    // Use SDL to get the base resource path the first time only;
-    if( shader_base_path_ == "" )
-    {
-        get_shader_base_path();
-    }
-    
+{   
     std::ifstream file( shader_base_path_ + filename );
     if( !file.good() )
     {
-        TJH_SHADER_PRINTF("Could not load  %s!", filename.c_str() );
+        TJH_SHADER_PRINTF("ERROR: Could not load '%s%s'!\n", shader_base_path_.c_str(), filename.c_str() );
         return false;
     }
 
@@ -282,7 +279,7 @@ bool TJH_SHADER_TYPENAME::compile_shader( GLenum type, GLuint& shader, const std
     shader = glCreateShader( type );
     if( shader == 0 )
     {
-        TJH_SHADER_PRINTF( "ERROR could not create shader\n" );
+        TJH_SHADER_PRINTF( "ERROR: could not create shader, %s\n", glenumShaderTypeToString(type).c_str() );
         return false;
     }
 
@@ -312,7 +309,9 @@ bool TJH_SHADER_TYPENAME::did_shader_compile_ok( GLuint shader )
 
         // Print the error
         // TODO: if we have the source then could we print the line that was broken?
-        TJH_SHADER_PRINTF( "ERROR: compiling shader...\n" );
+        GLint type;
+        glGetShaderiv( shader, GL_SHADER_TYPE, &type );
+        TJH_SHADER_PRINTF( "ERROR: compiling shader %s\n", glenumShaderTypeToString(type).c_str() );
         TJH_SHADER_PRINTF( "%s", buffer );
         return false;
     }
@@ -320,20 +319,25 @@ bool TJH_SHADER_TYPENAME::did_shader_compile_ok( GLuint shader )
     return true;
 }
 
-void TJH_SHADER_TYPENAME::get_shader_base_path()
+std::string TJH_SHADER_TYPENAME::glenumShaderTypeToString( GLenum type )
 {
-    // Use SDL to get the base path of the exe
-    char* charPath = SDL_GetBasePath();
-
-    // Add the shader folder to the project base path and a seperator on the end
-    shader_base_path_ = std::string(charPath) + SHADER_FOLDER + PATH_SEPERATOR;
-
-    // Free the SDL allocated string
-    SDL_free(charPath);
+    switch( type )
+    {
+    case GL_VERTEX_SHADER:          return "GL_VERTEX_SHADER";
+    case GL_TESS_CONTROL_SHADER:    return "GL_TESS_CONTROL_SHADER";
+    case GL_TESS_EVALUATION_SHADER: return "GL_TESS_EVALUATION_SHADER";
+    case GL_GEOMETRY_SHADER:        return "GL_GEOMETRY_SHADER";
+    case GL_FRAGMENT_SHADER:        return "GL_FRAGMENT_SHADER";
+    case GL_COMPUTE_SHADER:         return "GL_COMPUTE_SHADER";
+    default: return "UNKNOWN";
+    }
 }
 
 // Prevent the macros from leaking into the global namespace
-#undef SHADER_FOLDER
+#undef SHADER_FOLDER 
 #undef PATH_SEPERATOR
 
-#endif
+// Prevent the implementation from leaking into subsequent includes
+#undef TJH_SHADER_IMPLEMENTATION
+
+#endif // END TJH_SHADER_IMPLEMENTATION

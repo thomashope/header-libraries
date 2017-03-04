@@ -1,7 +1,11 @@
+#ifndef TJH_WINDOW_H
+#define TJH_WINDOW_H
+
 ////// README //////////////////////////////////////////////////////////////////
 //
-// Define TJH_WINDOW_IMPLEMENTATION in *ONE FILE ONLY*
-// This relies on GLEW and SDL2
+// * Define TJH_WINDOW_IMPLEMENTATION in *ONE CPP FILE ONLY*
+// * This library relies on GLEW and SDL2
+//
 // To compile on mac, install SDL2 and glew using homebrew
 // then link during compilation with -lSDL2 -lglew -framework OpenGL
 
@@ -9,7 +13,7 @@
 //
 // You can comment or uncomment the following #defines to enable or disable
 // additional library features.
-//
+
 // If defined init() and shutdown() will setup and quit the SDL2 library for you
 #define TJH_WINDOW_AUTO_INIT_AND_SHUTDOWN_SDL
 // If defined init() will call glewInit() with glewExperimental set to true
@@ -18,14 +22,15 @@
 #define TJH_WINDOW_INCLUDE_SDL
 // If defined this file will include glew.h
 #define TJH_WINDOW_INCLUDE_GLEW
-// Change this to customise the namespace for this library
-#define TJH_WINDOW_NAMESPACE Window
-// Change this to use a custom printf like function for your platform, for example SDL_Log
-#define TJH_WINDOW_PRINTF printf
 
 // IMPORTANT: If any of the above options are set these must also be set correctly
 #define TJH_WINDOW_SDL_H_LOCATION <SDL2/SDL.h>
 #define TJH_WINDOW_GLEW_H_LOCATION <GL/glew.h>
+
+// Change this to customise the namespace for this library
+#define TJH_WINDOW_NAMESPACE Window
+// Change this to use a custom printf like function for your platform, for example SDL_Log
+#define TJH_WINDOW_PRINTF printf
 
 ////// HEADER //////////////////////////////////////////////////////////////////
 
@@ -49,7 +54,10 @@ namespace TJH_WINDOW_NAMESPACE
     extern SDL_GLContext sdl_gl_context;
 }
 
+#endif // END TJH_WINDOW_H
+
 ////// IMPLEMENTATION //////////////////////////////////////////////////////////
+
 #ifdef TJH_WINDOW_IMPLEMENTATION
 
 namespace TJH_WINDOW_NAMESPACE
@@ -62,6 +70,7 @@ namespace TJH_WINDOW_NAMESPACE
     {
     #ifdef TJH_WINDOW_AUTO_INIT_AND_SHUTDOWN_SDL
         SDL_Init(SDL_INIT_EVERYTHING);
+        // TODO: error checking
     #endif
 
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
@@ -69,7 +78,9 @@ namespace TJH_WINDOW_NAMESPACE
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
 
         sdl_window = SDL_CreateWindow( title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, SDL_WINDOW_OPENGL );
+        // TODO: error checking
         sdl_gl_context = SDL_GL_CreateContext( sdl_window );
+        // TODO: error checking
 
     #ifdef TJH_WINDOW_AUTO_INIT_GLEW
         glewExperimental = GL_TRUE;
@@ -102,4 +113,5 @@ namespace TJH_WINDOW_NAMESPACE
     }
 }
 
+#undef TJH_WINDOW_IMPLEMENTATION
 #endif // END TJH_WINDOW_IMPLEMENTATION
