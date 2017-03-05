@@ -1,3 +1,38 @@
+#ifndef TJH_DRAW_H
+#define TJH_DRAW_H
+
+////// UNLICENSE ///////////////////////////////////////////////////////////////
+//
+// This is free and unencumbered software released into the public domain.
+//
+// Anyone is free to copy, modify, publish, use, compile, sell, or
+// distribute this software, either in source code form or as a compiled
+// binary, for any purpose, commercial or non-commercial, and by any
+// means.
+//
+// In jurisdictions that recognize copyright laws, the author or authors
+// of this software dedicate any and all copyright interest in the
+// software to the public domain. We make this dedication for the benefit
+// of the public at large and to the detriment of our heirs and
+// successors. We intend this dedication to be an overt act of
+// relinquishment in perpetuity of all present and future rights to this
+// software under copyright law.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+// EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+// MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+// IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR
+// OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+// ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+// OTHER DEALINGS IN THE SOFTWARE.
+//
+// For more information, please refer to <http://unlicense.org/>
+
+////// TODO ////////////////////////////////////////////////////////////////////
+//
+// - [ ] void setResolution( int width, int height );
+// - [ ] optional float type
+
 ////// README //////////////////////////////////////////////////////////////////
 //
 // DEPENDANCIES:
@@ -24,8 +59,8 @@
 
 ////// LIBRARY OPTIONS /////////////////////////////////////////////////////////
 //
-// You can comment or uncomment the following #defines to enable or disable
-// additional library features.
+// You can modify the following #defines to enable or disable additional library
+// features.
 //
 // Change this to customise the namespace for this library
 #define TJH_DRAW_NAMESPACE Draw
@@ -63,6 +98,8 @@ namespace TJH_DRAW_NAMESPACE
 
     extern const float PI;
 }
+
+#endif
 
 ////// IMPLEMENTATION //////////////////////////////////////////////////////////
 #ifdef TJH_DRAW_IMPLEMENTATION
@@ -108,7 +145,7 @@ namespace TJH_DRAW_NAMESPACE
         glGetShaderiv( vertex_shader_, GL_COMPILE_STATUS, &status );
         if( status != GL_TRUE )
         {
-            TJH_DRAW_PRINTF("ERROR: could not compile vertex shader\n");
+            TJH_DRAW_PRINTF("ERROR: draw could not compile vertex shader\n");
             // Get the length of the error log
             GLint log_length = 0;
             glGetShaderiv(vertex_shader_, GL_INFO_LOG_LENGTH, &log_length);
@@ -126,7 +163,7 @@ namespace TJH_DRAW_NAMESPACE
         glGetShaderiv( fragment_shader_, GL_COMPILE_STATUS, &status );
         if( status != GL_TRUE )
         {
-            TJH_DRAW_PRINTF("ERROR: could not compile fragment shader\n");
+            TJH_DRAW_PRINTF("ERROR: draw could not compile fragment shader\n");
             // Get the length of the error log
             GLint log_length = 0;
             glGetShaderiv(fragment_shader_, GL_INFO_LOG_LENGTH, &log_length);
@@ -165,6 +202,8 @@ namespace TJH_DRAW_NAMESPACE
 
     void shutdown()
     {
+        glDeleteVertexArrays( 1, &vao_ );
+        vao_ = 0;
         glDeleteProgram(shader_program_);
     }
 
