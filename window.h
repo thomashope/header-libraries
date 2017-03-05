@@ -30,6 +30,8 @@
 
 ////// TODO ////////////////////////////////////////////////////////////////////
 //
+// - [ ] Error checking in init function
+// - [ ] choose requested opengl version
 
 ////// DOCUMENTATION ///////////////////////////////////////////////////////////
 //
@@ -75,8 +77,7 @@
 
 namespace TJH_WINDOW_NAMESPACE
 {
-    // TODO: init() return an error flag or something?
-    void init(const char* title, int width, int height);    // Call one, can init SDL and GLEW if macros are set
+    bool init(const char* title, int width, int height);    // Call one, can init SDL and GLEW if macros are set
     void shutdown();                                        // Shuts down SDL window, and library if asked
     void present();                                         // Flip the buffers
     
@@ -103,11 +104,16 @@ namespace TJH_WINDOW_NAMESPACE
     SDL_Window* sdl_window = NULL;
     SDL_GLContext sdl_gl_context = NULL;
 
-    void init(const char* title, int width, int height)
+    bool init(const char* title, int width, int height)
     {
+        bool success = true;
+
     #ifdef TJH_WINDOW_AUTO_INIT_AND_SHUTDOWN_SDL
-        SDL_Init(SDL_INIT_EVERYTHING);
-        // TODO: error checking
+        if( SDL_Init(SDL_INIT_EVERYTHING) )
+        {
+            TJH_WINDOW_PRINTF("ERROR: could not init SDL2 %s\n", SDL_GetError());
+            success = false;
+        }
     #endif
 
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
@@ -115,15 +121,26 @@ namespace TJH_WINDOW_NAMESPACE
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
 
         sdl_window = SDL_CreateWindow( title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, SDL_WINDOW_OPENGL );
-        // TODO: error checking
+        if( sdl_window == NULL )
+        {
+            TJH_WINDOW_PRINTF("ERROR: creating window %s\n", SDL_GetError());
+            success = false;
+        }
+
         sdl_gl_context = SDL_GL_CreateContext( sdl_window );
-        // TODO: error checking
+        if( sdl_gl_context == NULL )
+        {
+            TJH_WINDOW_PRINTF("ERROR: creating opengl context %s\n", SDL_GetError());
+            success = false;
+        }
 
     #ifdef TJH_WINDOW_AUTO_INIT_GLEW
         glewExperimental = GL_TRUE;
         GLenum error = glewInit();
         if( error != GLEW_OK ) TJH_WINDOW_PRINTF("ERROR: starting glew %d", error);
     #endif
+
+        return success;
     }
 
     void shutdown()
