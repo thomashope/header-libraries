@@ -30,11 +30,11 @@
 
 ////// TODO ////////////////////////////////////////////////////////////////////
 //
-// - [ ] write the how to use info in documentation
-// - [ ] write short tutorial in documentation
-// - [ ] remove set right
+// - write the how to use info in documentation
+// - write short tutorial in documentation
+// - remove set right
 //		- instead calculate right when set dir or set up
-// - [ ] is it worth trying to remove the dependancy on GLM?
+// - is it worth trying to remove the dependancy on GLM?
 
 ////// DOCUMENTATION ///////////////////////////////////////////////////////////
 //

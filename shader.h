@@ -30,10 +30,10 @@
 
 ////// TODO ////////////////////////////////////////////////////////////////////
 //
-// - [ ] write the readme
-// - [ ] add geometry shader
-// - [ ] multiple output buffers
-// - [ ] simplify vao attrib layout specification
+// - write the readme
+// - add geometry shader
+// - multiple output buffers
+// - simplify vao attrib layout specification
 
 ////// DOCUMENTATION ///////////////////////////////////////////////////////////
 //
