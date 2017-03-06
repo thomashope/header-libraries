@@ -1,9 +1,9 @@
 #define TJH_WINDOW_IMPLEMENTATION
-#include "window.h"
+#include "../window.h"
 
 // Define TJH_DRAW_IMPLEMENTATION in ONE .cpp file in your project
 #define TJH_DRAW_IMPLEMENTATION
-#include "draw.h"
+#include "../draw.h"
 
 int main(int argc, char const *argv[])
 {

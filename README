@@ -21,3 +21,8 @@ much tailored to the kind of code I write.
 However if you happen to write code like me, then I hope this can be of use.
 If you have any suggestions of how I can improve this library get in touch
 through Twitter or Github, i'd be interested to hear your thoughts!
+
+## TODO
+
+- [ ] try out Travic CI
+- [ ] write tjh_camera.h example

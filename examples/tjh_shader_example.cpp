@@ -1,9 +1,9 @@
 #define TJH_WINDOW_IMPLEMENTATION
-#include "window.h"
+#include "../window.h"
 
 // Define TJH_SHADER_IMPLEMENTATION in ONE .cpp file in your project
 #define TJH_SHADER_IMPLEMENTATION
-#include "shader.h"
+#include "../shader.h"
 
 int main(int argc, char const *argv[])
 {
