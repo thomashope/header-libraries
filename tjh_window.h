@@ -32,12 +32,17 @@
 //
 // This single header library relies on the following:
 //
-// LIBNAME vX.X.X which is Copyright (C) HOLDER_NAME and distributed under the
-// LICENSE_NAME license. See here for more LINK_TO_RELEVANT_PAGE
+// SDL v2.0.5 which is Copyright (C) 1997-2016 Sam Lantinga <slouken@libsdl.org>
+// and distributed under the zlib license. See here for more
+// https://www.libsdl.org/
+//
+// GLEW v2.0.0 which is Copyright (C) Nate Robins - 1997, Michael Wimmer - 1999
+// Milan Ikits - 2002-2008, Nigel Stewart - 2008-2013 and distributed under the
+// Modified BSD License, Mesa 3-D Licsense (MIT) and the Khronos License (MIT)
+// license. See here for more http://glew.sourceforge.net/
 
 ////// TODO ////////////////////////////////////////////////////////////////////
 //
-// - Error checking in init function
 // - choose requested opengl version
 
 ////// DOCUMENTATION ///////////////////////////////////////////////////////////

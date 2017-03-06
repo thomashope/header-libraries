@@ -28,6 +28,15 @@
 //
 // For more information, please refer to <http://unlicense.org/>
 
+////// DEPENDENCIES ////////////////////////////////////////////////////////////
+//
+// This single header library relies on the following:
+//
+// GLEW v2.0.0 which is Copyright (C) Nate Robins - 1997, Michael Wimmer - 1999
+// Milan Ikits - 2002-2008, Nigel Stewart - 2008-2013 and distributed under the
+// Modified BSD License, Mesa 3-D Licsense (MIT) and the Khronos License (MIT).
+// See here for more http://glew.sourceforge.net/
+
 ////// TODO ////////////////////////////////////////////////////////////////////
 //
 // - write the how to use info in documentation

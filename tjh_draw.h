@@ -28,17 +28,19 @@
 //
 // For more information, please refer to <http://unlicense.org/>
 
+////// DEPENDENCIES ////////////////////////////////////////////////////////////
+//
+// This single header library relies on the following:
+//
+// Programable pipline OpenGL. You can load all your OpenGL functions with a
+// library like glew.h. See here for more http://glew.sourceforge.net/
+
 ////// TODO ////////////////////////////////////////////////////////////////////
 //
 // - void setResolution( int width, int height );
 // - optional float type
 
 ////// README //////////////////////////////////////////////////////////////////
-//
-// DEPENDANCIES:
-//
-//  Programable pipline OpenGL. You can load all your OpenGL functions a library
-//  like glew.h.
 //
 // INSTALLATION:
 //
