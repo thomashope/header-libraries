@@ -28,6 +28,13 @@
 //
 // For more information, please refer to <http://unlicense.org/>
 
+////// DEPENDENCIES ////////////////////////////////////////////////////////////
+//
+// This single header library relies on the following:
+//
+// LIBNAME vX.X.X which is Copyright (C) HOLDER_NAME and distributed under the
+// LICENSE_NAME license. See here for more LINK_TO_RELEVANT_PAGE
+
 ////// TODO ////////////////////////////////////////////////////////////////////
 //
 // - Error checking in init function
@@ -35,18 +42,57 @@
 
 ////// DOCUMENTATION ///////////////////////////////////////////////////////////
 //
-// * Define TJH_WINDOW_IMPLEMENTATION in *ONE CPP FILE ONLY*
-// * This library relies on GLEW and SDL2
+// ABOUT
 //
-// To compile on mac, install SDL2 and glew using homebrew
-// then link during compilation with -lSDL2 -lglew -framework OpenGL
+// This library tries to make getting an OpenGL context up as painless as
+// possible, allowing you to get going with as little as three function calls.
 //
-// TODO: write a short tutorial
+// - Window::init("Title", width, height) // Creates the window
+// - Window::present()      // Call this every frame
+// - Window::shutdown()     // Call this when you are done
+//
+// The library will optionally initialize SDL and GLEW for you for maximum
+// convinience!
+//
+// USAGE
+//
+// Simply drop this file in your project directory and in any ONE .cpp file do
+// the following:
+//
+// #define TJH_WINDOW_IMPLEMENTATION
+// #include "window.h"
+//
+// You can then #include "window.h" as normal in every other file that wishes to
+// use any of the window functions.
+//
+// You will need to link your application with SDL2 GLEW and OpenGL. On macOS
+// the OpenGL framework is included by default, and you can easily install SDL2
+// and GLEW using homebrew https://brew.sh . To compile run the following in
+// terminal:
+//
+// clang++ main.cpp -lSDL2 -lglew -framework opengl
+//
+// WHY ARE YOU DOING THIS?
+//
+// To spend less time writing the same old code
+// and more time getting stuff done.
+//
+// The design of this library is heavily influenced by Sean Barrett, creater of
+// the stb_*.h libraries. You can take a look and find out more about them
+// at https://github.com/nothings/stb . Having said that I am not trying to
+// mimic the stb_*.h libraries exactly. I am instead trying to prevent myself
+// from having to rewrite the same code over and over, and so this little
+// collection of libraries I have modestly named the tjh_*.h libraries, is very
+// much tailored to the kind of code I write.
+//
+// However if you happen to write code like me, then I hope this can be of use.
+// If you have any suggestions of how I can improve this library get in touch
+// through Twitter or Github, i'd be interested to hear your thoughts!
 
 ////// LIBRARY OPTIONS /////////////////////////////////////////////////////////
 //
-// You can comment or uncomment the following #defines to enable or disable
-// additional library features.
+// You can modify the following defines to customize the library for your needs
+// (also feel free to reach in and modify the code if you so desire)
 
 // If defined init() and shutdown() will setup and quit the SDL2 library for you
 #define TJH_WINDOW_AUTO_INIT_AND_SHUTDOWN_SDL
