@@ -40,11 +40,14 @@
 // - rename TJH_xxx_H defines, find-replace the string _xxx_
 // - rename tjh_xxx.h in usage section of documentation
 // - list dependancies, their licenses, and their respective copyright holders
-// - write documentation
+// - write ABOUT documentation
+// - add examples to USAGE documentation
 
 ////// DOCUMENTATION ///////////////////////////////////////////////////////////
 //
-// WHAT IS THIS?
+// ABOUT
+//
+// 
 //
 // USAGE
 //
@@ -56,6 +59,8 @@
 //
 // You can then #include "tjh_xxx.h" as normal in every other file that wishes to
 // use any of the window functions.
+//
+//
 //
 // WHY ARE YOU DOING THIS?
 //
@@ -73,8 +78,14 @@
 // However if you happen to write code like me, then I hope this can be of use.
 // If you have any suggestions of how I can improve this library get in touch
 // through Twitter or Github, i'd be interested to hear your thoughts!
+//
+// Much love, Tom
+// (Thomas J. Hope)
 
 ////// LIBRARY OPTIONS /////////////////////////////////////////////////////////
+//
+// You can modify the following defines to customize the library for your needs
+// (also feel free to reach in and modify the code if you so desire).
 
 // Change this to use a custom printf like function, for example SDL_Log
 #define TJH_xxx_PRINTF printf

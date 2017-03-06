@@ -93,11 +93,14 @@
 // However if you happen to write code like me, then I hope this can be of use.
 // If you have any suggestions of how I can improve this library get in touch
 // through Twitter or Github, i'd be interested to hear your thoughts!
+//
+// Much love, Tom
+// (Thomas J. Hope)
 
 ////// LIBRARY OPTIONS /////////////////////////////////////////////////////////
 //
 // You can modify the following defines to customize the library for your needs
-// (also feel free to reach in and modify the code if you so desire)
+// (also feel free to reach in and modify the code if you so desire).
 
 // If defined init() and shutdown() will setup and quit the SDL2 library for you
 #define TJH_WINDOW_AUTO_INIT_AND_SHUTDOWN_SDL
