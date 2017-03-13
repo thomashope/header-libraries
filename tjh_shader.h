@@ -374,5 +374,4 @@ std::string TJH_SHADER_TYPENAME::glenumShaderTypeToString( GLenum type )
 
 // Prevent the implementation from leaking into subsequent includes
 #undef TJH_SHADER_IMPLEMENTATION
-
 #endif // END TJH_SHADER_IMPLEMENTATION

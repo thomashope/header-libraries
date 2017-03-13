@@ -24,5 +24,9 @@ through Twitter or Github, i'd be interested to hear your thoughts!
 
 ## TODO
 
-- [ ] try out Travic CI
-- [ ] write tjh_camera.h example
+- try out Travic CI
+- write tjh_camera.h example
+- tjh_colour.h?
+    - conversion between HLSL and RGB with values [0,1], or [0,255]
+    - could use glm vector types for rather than (float r, float g, float b)?
+    - what other colour functions are usefull? here are some ideas https://github.com/WetDesertRock/vivid

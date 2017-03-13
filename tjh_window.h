@@ -244,5 +244,6 @@ namespace TJH_WINDOW_NAMESPACE
     }
 }
 
+// Prevent the implementation from leaking into subsequent includes
 #undef TJH_WINDOW_IMPLEMENTATION
 #endif // END TJH_WINDOW_IMPLEMENTATION

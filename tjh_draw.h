@@ -290,5 +290,6 @@ namespace TJH_DRAW_NAMESPACE
         delete[] verts;
     }
 }
-
+// Prevent the implementation from leaking into subsequent includes
+#undef TJH_DRAW_IMPLEMENTATION
 #endif
