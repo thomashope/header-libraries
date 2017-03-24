@@ -46,6 +46,8 @@
 // - is it worth trying to remove the dependancy on GLM?
 // 		- maybe have switch to turn on/off GLM
 //		- then have normal float x, y, z versions that always work
+// - Fix dependancies info! should be GLM not GLEW!
+// - Actually calculate the right vector
 
 ////// DOCUMENTATION ///////////////////////////////////////////////////////////
 //
@@ -125,7 +127,7 @@ void TJH_CAMERA_TYPENAME::setDirection( glm::vec3 dir )
 
 glm::mat4 TJH_CAMERA_TYPENAME::projection( int width, int height ) const
 {
-	return glm::perspective( vertical_fov_, width / (float)height, near_plane_, far_plane_ );
+    return glm::perspective( vertical_fov_, width / (float)height, near_plane_, far_plane_ );
 }
 
 // Prevent the implementation from leaking into subsequent includes
