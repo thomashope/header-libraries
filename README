@@ -22,10 +22,18 @@ However if you happen to write code like me, then I hope this can be of use.
 If you have any suggestions of how I can improve this library get in touch
 through Twitter or Github, i'd be interested to hear your thoughts!
 
+Much love, Tom
+(Thomas J. Hope)
+
 ## TODO
 
 - try out Travic CI
 - write tjh_camera.h example
+- tjh_audio.h
+    - OpenAL integration
+    - Classes for buffer, source, global listener
+    - cache audio sources
+    - Decodes audio files (requires SDL_LoadWAV?, integrate stb_vorbis?)
 - tjh_colour.h?
     - conversion between HLSL and RGB with values [0,1], or [0,255]
     - could use glm vector types for rather than (float r, float g, float b)?

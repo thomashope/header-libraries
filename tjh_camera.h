@@ -41,13 +41,14 @@
 //
 // - write the how to use info in documentation
 // - write short tutorial in documentation
+// - Actually calculate the right vector
 // - remove set right
 //		- instead calculate right when set dir or set up
 // - is it worth trying to remove the dependancy on GLM?
 // 		- maybe have switch to turn on/off GLM
 //		- then have normal float x, y, z versions that always work
 // - Fix dependancies info! should be GLM not GLEW!
-// - Actually calculate the right vector
+// - Orthogrphic mode
 
 ////// DOCUMENTATION ///////////////////////////////////////////////////////////
 //

@@ -44,6 +44,7 @@
 ////// TODO ////////////////////////////////////////////////////////////////////
 //
 // - choose requested opengl version
+// - set fullscreen state
 
 ////// DOCUMENTATION ///////////////////////////////////////////////////////////
 //
@@ -76,26 +77,6 @@
 // terminal:
 //
 // clang++ main.cpp -lSDL2 -lglew -framework opengl
-//
-// WHY ARE YOU DOING THIS?
-//
-// To spend less time writing the same old code
-// and more time getting stuff done.
-//
-// The design of this library is heavily influenced by Sean Barrett, creater of
-// the stb_*.h libraries. You can take a look and find out more about them
-// at https://github.com/nothings/stb . Having said that I am not trying to
-// mimic the stb_*.h libraries exactly. I am instead trying to prevent myself
-// from having to rewrite the same code over and over, and so this little
-// collection of libraries I have modestly named the tjh_*.h libraries, is very
-// much tailored to the kind of code I write.
-//
-// However if you happen to write code like me, then I hope this can be of use.
-// If you have any suggestions of how I can improve this library get in touch
-// through Twitter or Github, i'd be interested to hear your thoughts!
-//
-// Much love, Tom
-// (Thomas J. Hope)
 
 ////// LIBRARY OPTIONS /////////////////////////////////////////////////////////
 //
