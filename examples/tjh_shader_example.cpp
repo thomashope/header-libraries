@@ -1,14 +1,13 @@
 #define TJH_WINDOW_IMPLEMENTATION
-#include "../window.h"
+#include "../tjh_window.h"
 
 // Define TJH_SHADER_IMPLEMENTATION in ONE .cpp file in your project
 #define TJH_SHADER_IMPLEMENTATION
-#include "../shader.h"
+#include "../tjh_shader.h"
 
 int main(int argc, char const *argv[])
 {
 	Window::init( "my window", 640, 480 );
-	//Draw::init();
 	printf("OpenGL Version: %s\n", glGetString(GL_VERSION));
 
 	Shader shader;
@@ -66,8 +65,10 @@ int main(int argc, char const *argv[])
 		shader.setVertexSourceString( std::string(vert_src) );
 		shader.setFragmentSourceString( std::string(frag_src) );
 		shader.setGeometrySourceString( std::string(geo_src) );
-		shader.init();
-		shader.bind();
+		if( !shader.init() )
+        {
+            printf("oh no! Error creating shader!\n" );
+        }
 
 		glGenVertexArrays( 1, &vao );
         glBindVertexArray( vao );
@@ -111,7 +112,6 @@ int main(int argc, char const *argv[])
 		Window::present();
 	}
 
-	//Draw::shutdown();
 	Window::shutdown();
 	return 0;
 }

@@ -96,10 +96,11 @@ class TJH_SHADER_TYPENAME
 {
 public:
     TJH_SHADER_TYPENAME();
-    ~TJH_SHADER_TYPENAME() {}
+    ~TJH_SHADER_TYPENAME();
 
     // Returns true if shader compilation was a success, false if there was an error
     bool init();
+    // Can be used to explicitly clean up OpenGL resources, not required
     void shutdown();
 
     // Returns true if the source files were loaded successfully
@@ -126,7 +127,7 @@ public:
 private:
     // Loads the text file 'filename' and passes the contents to the pointer
     // returns true on success
-    bool load_file( std::string filename, std::string* file_contents  );
+    bool load_file( std::string filename, std::string& file_contents  );
     // returns true on success
     bool compile_shader( GLenum type, GLuint& shader, const std::string& source );
     // returns true if the shader did compile ok
@@ -159,8 +160,6 @@ private:
 
 // Shader base path is found by SDL the first time it is needed
 std::string TJH_SHADER_TYPENAME::shader_base_path_ = "";
-// The folder to look in relative to the base path
-#define SHADER_FOLDER "shaders"
 
 #ifdef _WIN32
     #define PATH_SEPERATOR '\\'
@@ -169,92 +168,106 @@ std::string TJH_SHADER_TYPENAME::shader_base_path_ = "";
 #endif
 
 TJH_SHADER_TYPENAME::TJH_SHADER_TYPENAME() :
+program_(0),
 vertex_shader_(0),
 fragment_shader_(0),
 geometry_shader_(0),
 tried_set_geometry_source_(false)
 {}
 
+TJH_SHADER_TYPENAME::~TJH_SHADER_TYPENAME()
+{
+    shutdown();
+}
+
 bool TJH_SHADER_TYPENAME::init()
 {
-    bool error = false;
     program_ = glCreateProgram();
 
-    if( !vertex_source_.empty() )
+    bool compiled_vertex_source = compile_shader( GL_VERTEX_SHADER, vertex_shader_, vertex_source_ );
+    if( compiled_vertex_source )
     {
-        error |= !compile_shader( GL_VERTEX_SHADER, vertex_shader_, vertex_source_ );
         glAttachShader( program_, vertex_shader_ );
     }
-    else
-    {
-        TJH_SHADER_PRINTF( "ERROR vertex shader source was empty! (not set)\n" );
-    }
 
-    if( !fragment_source_.empty() )
+    bool compiled_fragment_source = compile_shader( GL_FRAGMENT_SHADER, fragment_shader_, fragment_source_ );
+    if( compiled_fragment_source )
     {
-        error |= !compile_shader( GL_FRAGMENT_SHADER, fragment_shader_, fragment_source_ );
         glAttachShader( program_, fragment_shader_ );
     }
-    else
-    {
-        TJH_SHADER_PRINTF( "ERROR: fragment shader source was empty! (not set)\n" );
-    }
 
+    // If the programmer tied to use a geometry shader, try to compile and attach it
+    bool compiled_geometry_source = false;
     if( tried_set_geometry_source_ )
     {
-        if( !geometry_source_.empty() )
+        compiled_geometry_source = compile_shader( GL_GEOMETRY_SHADER, geometry_shader_, geometry_source_ );
+        if( compiled_geometry_source )
         {
-            error |= !compile_shader( GL_GEOMETRY_SHADER, geometry_shader_, geometry_source_ );
             glAttachShader( program_, geometry_shader_ );
         }
-        else
-        {
-            TJH_SHADER_PRINTF( "ERROR: geometry shader source was empty! (not set)\n" );
-        }
     }
 
-    if( !error ) {
-         // Create the shader program, attach the vertex and fragment shaders
+    bool everything_ok = compiled_fragment_source
+                         && compiled_vertex_source
+                         && (tried_set_geometry_source_ == compiled_geometry_source);
+
+    if( everything_ok ) {
+         // Link the shaders together into a program
         glBindFragDataLocation( program_, 0, "outDiffuse" );
         glLinkProgram( program_ );
-
-        // now cleanup the shaders
-        // TODO: it's possible we want to the same vertex/fagment/etc. shader multple times in different programs
-        // TODO: find a way of supporting this without the caller having to do extra work, on the other hand it might not be worth it
-        glDetachShader( program_, vertex_shader_ );
-        glDetachShader( program_, fragment_shader_ );
-        glDetachShader( program_, geometry_shader_ );
-        // TODO: will this cause a problem if I try to delete a shader that was never created?
-        //  If the shader is not created the value will be left at 0, which could be a valid shader
-        //      
-        if( !vertex_source_.empty() )
-        {
-            glDeleteShader( vertex_shader_ );
-            vertex_source_.clear();
-            vertex_source_.shrink_to_fit();
-        }
-        if( !fragment_source_.empty() )
-        {
-            glDeleteShader( fragment_shader_ );
-            fragment_source_.clear();
-            fragment_source_.shrink_to_fit();
-        }
-        if( !geometry_source_.empty() )
-        {
-            glDeleteShader( geometry_shader_ ); 
-            geometry_source_.clear();
-            geometry_source_.shrink_to_fit();
-        }
     }
 
-    return !error;
+    // now cleanup the shaders
+    // TODO: it's possible we want to the same vertex/fagment/etc. shader multple times in different programs
+    // TODO: find a way of supporting this without the caller having to do extra work, on the other hand it might not be worth it
+    // TODO: will this cause a problem if I try to delete a shader that was never created?
+    //  If the shader is not created the value will be left at 0, which could be a valid shader
+
+    if( compiled_vertex_source ) {
+        glDetachShader( program_, vertex_shader_ );
+        glDeleteShader( vertex_shader_ );
+    }
+
+    if( compiled_fragment_source ) {
+        glDetachShader( program_, fragment_shader_ );
+        glDeleteShader( fragment_shader_ );
+    }
+
+    if( tried_set_geometry_source_ && compiled_geometry_source )
+    {
+        glDetachShader( program_, geometry_shader_ );
+        glDeleteShader( geometry_shader_ ); 
+    }
+
+    // Clear all the strings
+    vertex_source_.clear();
+    vertex_source_.shrink_to_fit();
+    fragment_source_.clear();
+    fragment_source_.shrink_to_fit();
+    geometry_source_.clear();
+    geometry_source_.shrink_to_fit();
+
+    return everything_ok;
 }
 
 void TJH_SHADER_TYPENAME::shutdown()
 {
-    glDeleteProgram( program_ );
-    glDeleteShader( vertex_shader_ );
-    glDeleteShader( fragment_shader_ );
+    if( program_ ) {
+        glDeleteProgram( program_ );
+        program_ = 0;
+    }
+    if( vertex_shader_ ) {
+        glDeleteShader( vertex_shader_ );
+        vertex_shader_ = 0;
+    }
+    if( fragment_shader_ ) {
+        glDeleteShader( fragment_shader_ );
+        fragment_shader_ = 0;
+    }
+    if( geometry_shader_ ) {
+        glDeleteShader( geometry_shader_ );
+        geometry_shader_ = 0;
+    }
 }
 
 GLint TJH_SHADER_TYPENAME::getUniformLocation( const GLchar* name ) const
@@ -278,21 +291,21 @@ GLint TJH_SHADER_TYPENAME::getAttribLocation( const GLchar* name ) const
 
 bool TJH_SHADER_TYPENAME::loadVertexSourceFile( std::string file_path )
 {
-    return load_file( file_path, &vertex_source_ );
+    return load_file( file_path, vertex_source_ );
 }
 
 bool TJH_SHADER_TYPENAME::loadFragmentSourceFile( std::string file_path )
 {
-    return load_file( file_path, &fragment_source_ );
+    return load_file( file_path, fragment_source_ );
 }
 
 bool TJH_SHADER_TYPENAME::loadGeometrySourceFile( std::string file_path )
 {
     tried_set_geometry_source_ = true;
-    return load_file( file_path, &geometry_source_ );
+    return load_file( file_path, geometry_source_ );
 }
 
-bool TJH_SHADER_TYPENAME::load_file( std::string filename, std::string* file_contents )
+bool TJH_SHADER_TYPENAME::load_file( std::string filename, std::string& file_contents )
 {   
     std::ifstream file( shader_base_path_ + filename );
     if( !file.good() )
@@ -304,13 +317,19 @@ bool TJH_SHADER_TYPENAME::load_file( std::string filename, std::string* file_con
     std::stringstream buffer;
     buffer << file.rdbuf();
 
-    *file_contents = buffer.str();
+    file_contents = buffer.str();
 
     return true;
 }
 
 bool TJH_SHADER_TYPENAME::compile_shader( GLenum type, GLuint& shader, const std::string& source )
 {
+    if( source.empty() )
+    {
+        TJH_SHADER_PRINTF( "ERROR: '%s' source was empty! (not loaded/set)\n", glenumShaderTypeToString(type).c_str() );
+        return false;
+    }
+
     shader = glCreateShader( type );
     if( shader == 0 )
     {
@@ -369,7 +388,6 @@ std::string TJH_SHADER_TYPENAME::glenumShaderTypeToString( GLenum type )
 }
 
 // Prevent the macros from leaking into the global namespace
-#undef SHADER_FOLDER 
 #undef PATH_SEPERATOR
 
 // Prevent the implementation from leaking into subsequent includes
