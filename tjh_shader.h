@@ -82,8 +82,8 @@ const GLchar* frag_src = GLSL(
 #define TJH_SHADER_TYPENAME Shader
 // Change this to use a custom printf like function for your platform, for example SDL_Log
 #define TJH_SHADER_PRINTF printf
-// Either set this correctly or uncomment if you would preffer shader.h did not include glew
-#define TJH_SHADER_GLEW_H_LOCATION          <GL/glew.h>
+// Either set this correctly or comment it out if you would preffer tjh_shader.h did not include glew
+#define TJH_SHADER_GLEW_H_LOCATION <GL/glew.h>
 
 ////// HEADER //////////////////////////////////////////////////////////////////
 
