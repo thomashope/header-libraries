@@ -118,6 +118,7 @@ public:
 
     // Bind the shader to the OpenGL context, ready for use
     void bind() const { glUseProgram( program_ ); }
+    void unbind() const { glUseProgram( 0 ); }
 
     // Don't forget to bind shaders before trying to get uniforms or attributes
     GLint getUniformLocation( const GLchar* name ) const;
@@ -226,17 +227,20 @@ bool TJH_SHADER_TYPENAME::init()
     if( compiled_vertex_source ) {
         glDetachShader( program_, vertex_shader_ );
         glDeleteShader( vertex_shader_ );
+        vertex_shader_ = 0;
     }
 
     if( compiled_fragment_source ) {
         glDetachShader( program_, fragment_shader_ );
         glDeleteShader( fragment_shader_ );
+        fragment_shader_ = 0;
     }
 
     if( tried_set_geometry_source_ && compiled_geometry_source )
     {
         glDetachShader( program_, geometry_shader_ );
         glDeleteShader( geometry_shader_ ); 
+        geometry_shader_ = 0;
     }
 
     // Clear all the strings
