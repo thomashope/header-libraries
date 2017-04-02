@@ -39,6 +39,9 @@
 //
 // - void setResolution( int width, int height );
 // - optional float type
+// - batch renders and draw on call to end();
+//     - draw lines with narrow quads, variable line width
+//     - when drawing shapes in line mode, lines expand inwards to preserve specified size
 
 ////// README //////////////////////////////////////////////////////////////////
 //
