@@ -38,3 +38,8 @@ Much love, Tom
     - conversion between HLSL and RGB with values [0,1], or [0,255]
     - could use glm vector types for rather than (float r, float g, float b)?
     - what other colour functions are usefull? here are some ideas https://github.com/WetDesertRock/vivid
+- tjh_screen_logger.h?
+    - print debug log output graphicaly
+    - can also draw static strings
+    - allows messages to be updated after being pushed
+    - what do other loggers do... message levels, colours
