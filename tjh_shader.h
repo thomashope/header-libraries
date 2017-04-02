@@ -32,6 +32,8 @@
 //
 // This single header library relies on the following:
 //
+// Compiler that supports C++11 Features!
+//
 // GLEW v2.0.0 which is Copyright (C) Nate Robins - 1997, Michael Wimmer - 1999
 // Milan Ikits - 2002-2008, Nigel Stewart - 2008-2013 and distributed under the
 // Modified BSD License, Mesa 3-D Licsense (MIT) and the Khronos License (MIT).
@@ -42,7 +44,7 @@
 // - write the readme
 // - add geometry shader
 // - multiple output buffers
-// - simplify vao attrib layout specification
+// - can I reduce includes in implementation section
 
 ////// EXAMPLE SHADER CODE /////////////////////////////////////////////////////
 //
@@ -103,6 +105,20 @@ public:
     // Can be used to explicitly clean up OpenGL resources, not required
     void shutdown();
 
+    // Call this so we know where to look for the shaders
+    static void setShaderBasePath( std::string path ) { shader_base_path_ = path; }
+
+    struct VertexAttribArrayDesc {
+        std::string name;
+        GLint count;
+        GLenum type;
+        GLboolean normalized;
+    };
+
+    // Saves calling a whole heap of gl functions, use it like so:
+    // shader.setVertexAttribArray({ {"pos", 3, GL_FLOAT, GL_FALSE}, {"col", 3, GL_FLOAT, GL_FALSE} });
+    bool setVertexAttribArrays( const std::initializer_list<VertexAttribArrayDesc>& desc_list );
+
     // Returns true if the source files were loaded successfully
     // false if they could not be loaded
     bool loadVertexSourceFile( std::string file_path );
@@ -113,8 +129,6 @@ public:
     void setVertexSourceString( const std::string& source ) { vertex_source_ = source; }
     void setFragmentSourceString( const std::string& source ) { fragment_source_ = source; }
     void setGeometrySourceString( const std::string& source ) { geometry_source_ = source; tried_set_geometry_source_ = true; }
-
-    static void setShaderBasePath( std::string path ) { shader_base_path_ = path; }
 
     // Bind the shader to the OpenGL context, ready for use
     void bind() const { glUseProgram( program_ ); }
@@ -136,6 +150,7 @@ private:
 
     // Converts GLenums such as GL_VERTEX_SHADER to a string
     std::string glenumShaderTypeToString( GLenum type );
+    int glenumTypeToSizeInBytes( GLenum type );
 
     GLuint program_;
     GLuint vertex_shader_;
@@ -155,9 +170,9 @@ private:
 ////// IMPLEMENTATION //////////////////////////////////////////////////////////
 #ifdef TJH_SHADER_IMPLEMENTATION
 
-// TODO: can I reduce these includes?
 #include <fstream>
 #include <sstream>
+#include <vector>
 
 // Shader base path is found by SDL the first time it is needed
 std::string TJH_SHADER_TYPENAME::shader_base_path_ = "";
@@ -293,6 +308,39 @@ GLint TJH_SHADER_TYPENAME::getAttribLocation( const GLchar* name ) const
     return attribute;
 }
 
+bool TJH_SHADER_TYPENAME::setVertexAttribArrays( const std::initializer_list<VertexAttribArrayDesc>& desc_list )
+{
+    bool success = true;
+    std::vector<long unsigned> offset_list;
+
+    GLsizei stride = 0;
+    for( const auto& desc : desc_list )
+    {
+        int size = glenumTypeToSizeInBytes( desc.type );
+        stride += size * desc.count;
+        offset_list.push_back( stride - size * desc.count );
+    }
+
+    // Manual loop counter because initalizer lists like ranged for loops
+    // but we also want and index for the vector
+    int i = 0;
+    for( const auto& desc : desc_list )
+    {
+        GLint attrib = getAttribLocation( desc.name.c_str() );
+        glEnableVertexAttribArray( attrib );
+    	glVertexAttribPointer(
+            attrib,
+            desc.count,
+            desc.type,
+            desc.normalized,
+            stride,
+            (void*)offset_list[i] );
+        i++;
+    }
+
+    return success;
+}
+
 bool TJH_SHADER_TYPENAME::loadVertexSourceFile( std::string file_path )
 {
     return load_file( file_path, vertex_source_ );
@@ -362,15 +410,16 @@ bool TJH_SHADER_TYPENAME::did_shader_compile_ok( GLuint shader )
         glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &log_length);
 
         // Now get the error log itself
-        GLchar buffer[log_length];
-        glGetShaderInfoLog( shader, log_length, NULL, buffer );
+        std::vector<GLchar> buffer;
+        buffer.reserve(log_length);
+        glGetShaderInfoLog( shader, log_length, NULL, buffer.data() );
 
         // Print the error
         // TODO: if we have the source then could we print the line that was broken?
         GLint type;
         glGetShaderiv( shader, GL_SHADER_TYPE, &type );
         TJH_SHADER_PRINTF( "ERROR: compiling shader %s\n", glenumShaderTypeToString(type).c_str() );
-        TJH_SHADER_PRINTF( "%s", buffer );
+        TJH_SHADER_PRINTF( "%s", buffer.data() );
         return false;
     }
 
@@ -388,6 +437,25 @@ std::string TJH_SHADER_TYPENAME::glenumShaderTypeToString( GLenum type )
     case GL_FRAGMENT_SHADER:        return "GL_FRAGMENT_SHADER";
     case GL_COMPUTE_SHADER:         return "GL_COMPUTE_SHADER";
     default: return "UNKNOWN";
+    }
+}
+int TJH_SHADER_TYPENAME::glenumTypeToSizeInBytes( GLenum type )
+{
+    switch( type )
+    {
+        case GL_BYTE:               return sizeof(GLbyte);
+        case GL_UNSIGNED_BYTE:      return sizeof(GLubyte);
+        case GL_SHORT:              return sizeof(GLshort);
+        case GL_UNSIGNED_SHORT:     return sizeof(GLushort);
+        case GL_INT:                return sizeof(GLint);
+        case GL_UNSIGNED_INT:       return sizeof(GLuint);
+        case GL_FIXED:              return sizeof(GLfixed);
+        case GL_HALF_FLOAT:         return sizeof(GLhalf);
+        case GL_FLOAT:              return sizeof(GLfloat);
+        case GL_DOUBLE:             return sizeof(GLdouble);
+        default:
+            TJH_SHADER_PRINTF( "ERROR: unknown type in glenumTypeToSizeInBytes %d\n", type );
+            return 0;
     }
 }
 

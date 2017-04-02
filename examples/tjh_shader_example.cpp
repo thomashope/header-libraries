@@ -84,13 +84,9 @@ int main(int argc, char const *argv[])
         };
         glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STATIC_DRAW);
 
-        GLint posAttrib = shader.getAttribLocation( "pos" );
-        glEnableVertexAttribArray( posAttrib );
-    	glVertexAttribPointer( posAttrib, 3, GL_FLOAT, GL_FALSE, 6*sizeof(GLfloat), 0 );
-        GLint colAttrib = shader.getAttribLocation( "col" );
-        glEnableVertexAttribArray( colAttrib );
-    	glVertexAttribPointer( colAttrib, 3, GL_FLOAT, GL_FALSE, 6*sizeof(GLfloat), (void*)(3*sizeof(GLfloat)) );
-
+        shader.setVertexAttribArrays({
+            {"pos", 3, GL_FLOAT, GL_FALSE},
+            {"col", 3, GL_FLOAT, GL_FALSE} });
 	}
 
 	SDL_Event event;
