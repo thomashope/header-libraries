@@ -45,6 +45,7 @@
 // - add geometry shader
 // - multiple output buffers
 // - can I reduce includes in implementation section
+// - apply rule of 3/5/0. Delete copy constructors but implemenet move constructors?
 
 ////// EXAMPLE SHADER CODE /////////////////////////////////////////////////////
 //
