@@ -175,6 +175,9 @@ namespace TJH_WINDOW_NAMESPACE
         if( error != GLEW_OK ) TJH_WINDOW_PRINTF("ERROR: starting glew %d", error);
     #endif
 
+        // try to set Vsync by default, don't really care if it doesn't work though...
+        setVsync( true );
+
         return success;
     }
 
