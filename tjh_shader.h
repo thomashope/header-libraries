@@ -47,6 +47,7 @@
 // - can I reduce includes in implementation section
 // - apply rule of 3/5/0. Delete copy constructors but implemenet move constructors?
 // - test OpenGL ES compatability
+//  - track pitch and yaw?, calculate and set from pos and dir without storing it?
 
 ////// EXAMPLE SHADER CODE /////////////////////////////////////////////////////
 //
@@ -139,7 +140,7 @@ public:
     // Don't forget to bind shaders before trying to get uniforms or attributes
     GLint getUniformLocation( const GLchar* name ) const;
     GLint getAttribLocation( const GLchar* name ) const;
-    GLint getProgram() const { return program_; }
+    GLuint getProgram() const { return program_; }
 
 private:
     // Loads the text file 'filename' and passes the contents to the pointer
@@ -325,7 +326,7 @@ bool TJH_SHADER_TYPENAME::setVertexAttribArrays( const std::initializer_list<Ver
 
     // Manual loop counter because initalizer lists like ranged for loops
     // but we also want and index for the vector
-    int i = 0;
+    size_t i = 0;
     for( const auto& desc : desc_list )
     {
         GLint attrib = getAttribLocation( desc.name.c_str() );
@@ -336,7 +337,7 @@ bool TJH_SHADER_TYPENAME::setVertexAttribArrays( const std::initializer_list<Ver
             desc.type,
             desc.normalized,
             stride,
-            (void*)offset_list[i] );
+            (void*)(offset_list[i]) );
         i++;
     }
 
@@ -392,7 +393,7 @@ bool TJH_SHADER_TYPENAME::compile_shader( GLenum type, GLuint& shader, const std
     }
 
     // Shader strings have to be converted to const GLchar* so OpenGL can compile them
-    const GLchar* source_ptr = (const GLchar*)source.c_str();
+    const GLchar* source_ptr = static_cast<const GLchar*>(source.c_str());
 
     glShaderSource( shader, 1, &source_ptr, NULL );
     glCompileShader( shader );
@@ -413,14 +414,14 @@ bool TJH_SHADER_TYPENAME::did_shader_compile_ok( GLuint shader )
 
         // Now get the error log itself
         std::vector<GLchar> buffer;
-        buffer.reserve(log_length);
+        buffer.reserve( static_cast<size_t>(log_length) );
         glGetShaderInfoLog( shader, log_length, NULL, buffer.data() );
 
         // Print the error
         // TODO: if we have the source then could we print the line that was broken?
         GLint type;
         glGetShaderiv( shader, GL_SHADER_TYPE, &type );
-        TJH_SHADER_PRINTF( "ERROR: compiling shader %s\n", glenumShaderTypeToString(type).c_str() );
+        TJH_SHADER_PRINTF( "ERROR: compiling shader %s\n", glenumShaderTypeToString(static_cast<GLenum>(type)).c_str() );
         TJH_SHADER_PRINTF( "%s", buffer.data() );
         return false;
     }
