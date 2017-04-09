@@ -42,13 +42,15 @@
 // - write the how to use info in documentation
 // - write short tutorial in documentation
 // - Actually calculate the right vector
-// - remove set right
-//		- instead calculate right when set dir or set up
-// - is it worth trying to remove the dependancy on GLM?
+// - remove the dependancy on GLM
 // 		- maybe have switch to turn on/off GLM
 //		- then have normal float x, y, z versions that always work
 // - Fix dependancies info! should be GLM not GLEW!
 // - Orthogrphic mode
+// - clamp vertical rotation at directly vertical, possibly requires spherical coords
+// - add helpers for camera interactivity
+//  - forward, back
+//  - forwardHorizontal, backHorizontal <- for moving locked on the horizontal plane. Needs better names...
 
 ////// DOCUMENTATION ///////////////////////////////////////////////////////////
 //
@@ -67,35 +69,47 @@ class TJH_CAMERA_TYPENAME
 {
 public:
 	TJH_CAMERA_TYPENAME();
+    TJH_CAMERA_TYPENAME( float x, float y, float z, float look_at_x, float look_at_y, float look_at_z );
 	~TJH_CAMERA_TYPENAME() {}
 	
+    // Movement helpers
+    void moveUp( float distance )       { pos_ += up_ * distance; }
+    void moveDown( float distance )     { moveUp( -distance ); }
+    void moveLeft( float distance )     { pos_ -= right_ * distance; }
+    void moveRight( float distance )    { moveLeft( -distance ); }
+    void moveForward( float distance )  { pos_ += dir_ * distance; }
+    void moveBack( float distance )     { moveForward( -distance ); }
+    void rotateLeft( float radians );
+    void rotateRight( float radians )   { rotateLeft( -radians ); }
+    void rotateUp( float radians );
+    void rotateDown( float radians )    { rotateUp( -radians ); }
+    
 	// Setters
 	void setUp( glm::vec3 up );
-	void setRight( glm::vec3 right ) { right_ = right; }
-	void setPosition( glm::vec3 pos ) { pos_ = pos; }
+	void setPosition( glm::vec3 pos )             { pos_ = pos; }
 	void setDirection( glm::vec3 dir );
-	void setLookAt( glm::vec3 look_at ) { dir_ = glm::normalize( (look_at - pos_) ); }
-	void setVerticalFOV( float fov ) { vertical_fov_ = glm::radians(fov); }
+	void setLookAt( glm::vec3 look_at );
+	void setVerticalFOV( float fov )              { vertical_fov_ = glm::radians(fov); }
 	void setNearFarPlane( float near, float far ) { near_plane_ = near; far_plane_ = far; }
 
 	// Getters
-	glm::vec3 position() const { return pos_; }
-	glm::vec3 direction() const { return dir_; }
-	glm::vec3 up() const { return up_; }
-	glm::vec3 right() const { return right_; }
-	glm::mat4 view() const { return glm::lookAt( pos_, pos_ + dir_, up_ ); }
+	glm::vec3 position()    const { return pos_; }
+	glm::vec3 direction()   const { return dir_; }
+	glm::vec3 up()          const { return up_; }
+	glm::vec3 right()       const { return right_; }
+	glm::mat4 view()        const { return glm::lookAt( pos_, pos_ + dir_, up_ ); }
 	glm::mat4 projection( int width, int height ) const;
 
 private:
 
-	glm::vec3 pos_; // Position
-	glm::vec3 dir_; // Direction the camera is facing
-	glm::vec3 up_;
-	glm::vec3 right_; // TODO: CALCULATE ME
+	glm::vec3 pos_          = { 0.0f, 1.0f, 5.0f };
+	glm::vec3 dir_          = { 0.0f, 0.0f, -1.0f };
+	glm::vec3 up_           = { 0.0f, 1.0f, 0.0f };
+	glm::vec3 right_        = { 1.0f, 0.0f, 0.0f };
 
-	float vertical_fov_;
-	float near_plane_;
-	float far_plane_;
+	float vertical_fov_     = glm::radians(45.0f);
+	float near_plane_       = 0.1f;
+	float far_plane_        = 100.0f;
 };
 
 #endif // END TJH_CAMERA_H
@@ -104,31 +118,61 @@ private:
 
 #ifdef TJH_CAMERA_IMPLEMENTATION
 
-TJH_CAMERA_TYPENAME::TJH_CAMERA_TYPENAME() :
-pos_( 3.0f, 2.0f, 3.0f ),
-dir_( 1.0f, 0.0f, 0.0f ),
-up_( 0.0f, 1.0f, 0.0f ),
-right_( 1.0f, 0.0f, 0.0f ),
-vertical_fov_( glm::radians(45.0f) ),
-near_plane_( 0.1f ),
-far_plane_( 200.0f )
+#include <glm/gtx/rotate_vector.hpp>
+#include <glm/gtx/vector_angle.hpp>
+
+TJH_CAMERA_TYPENAME::TJH_CAMERA_TYPENAME() {}
+TJH_CAMERA_TYPENAME::TJH_CAMERA_TYPENAME( float x, float y, float z, float look_at_x, float look_at_y, float look_at_z )
 {
-	setLookAt( glm::vec3(0, 0, 0) );
+    pos_ = { x, y, z };
+    setLookAt( { look_at_x, look_at_y, look_at_z } );
+}
+
+void TJH_CAMERA_TYPENAME::rotateLeft( float radians )
+{
+    dir_ = glm::rotate( dir_, radians, up_ );
+    dir_ = glm::normalize( dir_ );
+    right_ = glm::normalize( glm::cross( dir_, up_ ) );
+}
+
+// NOTE: this method will not clamp to exactly vertical when rotating up or down
+// TODO: find a way of making it clamp to vertical
+//  - One solution would be to switch to using spherical coords?
+void TJH_CAMERA_TYPENAME::rotateUp( float radians )
+{
+    glm::vec3 new_dir = glm::rotate( dir_, radians, right_ );
+    glm::vec3 new_right = glm::cross( new_dir, up_ );
+
+    // Only apply rotation if we aren't going to 'flip' upside down
+    // Check for flipping by comparing
+    if( new_right.x * right_.x >= 0.0f && new_right.y * right_.y >= 0.0f && new_right.z * right_.z >= 0.0f )
+    {
+        dir_ = glm::normalize( new_dir );
+        right_ = glm::normalize( new_right );
+    }
 }
 
 void TJH_CAMERA_TYPENAME::setUp( glm::vec3 up )
 {
-	up_ = up;
+	up_ = glm::normalize( up );
+    right_ = glm::normalize( glm::cross( dir_, up_ ) );
 }
 
 void TJH_CAMERA_TYPENAME::setDirection( glm::vec3 dir )
 {
-	dir_ = dir;
+	dir_ = glm::normalize( dir );
+    right_ = glm::normalize( glm::cross( dir_, up_ ) );
+}
+
+void TJH_CAMERA_TYPENAME::setLookAt( glm::vec3 look_at )
+{
+    dir_ = glm::normalize( (look_at - pos_) );
+    right_ = glm::normalize( glm::cross( dir_, up_ ) );
 }
 
 glm::mat4 TJH_CAMERA_TYPENAME::projection( int width, int height ) const
 {
-    return glm::perspective( vertical_fov_, width / (float)height, near_plane_, far_plane_ );
+    return glm::perspective( vertical_fov_, width / static_cast<float>(height), near_plane_, far_plane_ );
 }
 
 // Prevent the implementation from leaking into subsequent includes
