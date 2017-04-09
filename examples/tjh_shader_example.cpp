@@ -48,6 +48,17 @@ int main(int argc, char const *argv[])
 		while( SDL_PollEvent(&event) )
 		{
 			if( event.type == SDL_QUIT ) done = true;
+            if( event.type == SDL_KEYDOWN )
+            {
+                if( event.key.keysym.scancode == SDL_SCANCODE_Q )
+                {
+                    done = true;
+                }
+                else if( event.key.keysym.scancode == SDL_SCANCODE_GRAVE )
+                {
+                    shader.reload();
+                }
+            }
 		}
 
 		glClearColor(0,0,0,0);

@@ -247,21 +247,15 @@ bool TJH_SHADER_TYPENAME::init()
 
     if( compiled_vertex_source ) {
         glDetachShader( program_, vertex_shader_ );
-        glDeleteShader( vertex_shader_ );
-        vertex_shader_ = 0;
     }
 
     if( compiled_fragment_source ) {
         glDetachShader( program_, fragment_shader_ );
-        glDeleteShader( fragment_shader_ );
-        fragment_shader_ = 0;
     }
 
     if( tried_set_geometry_source_ && compiled_geometry_source )
     {
         glDetachShader( program_, geometry_shader_ );
-        glDeleteShader( geometry_shader_ ); 
-        geometry_shader_ = 0;
     }
 
     // Clear all the strings
@@ -273,6 +267,79 @@ bool TJH_SHADER_TYPENAME::init()
     geometry_source_.shrink_to_fit();
 
     return everything_ok;
+}
+
+bool TJH_SHADER_TYPENAME::reload()
+{
+    GLuint new_program              = glCreateProgram();
+    GLuint new_vertex_shader        = 0;
+    GLuint new_fragment_shader      = 0;
+    GLuint new_geometry_shader      = 0;
+    bool compiled_new_shaders_ok    = false;
+
+    // Try to load and recompile the vertex shader
+    if( !vertex_source_filename_.empty() )
+    {
+        compiled_new_shaders_ok = loadVertexSourceFile( vertex_source_filename_ )
+                                && compile_shader( GL_VERTEX_SHADER, new_vertex_shader, vertex_source_ );
+        if( !compiled_new_shaders_ok )
+            TJH_SHADER_PRINTF("ERROR: failed to recompile vertex shader in program '%i'\n", program_ );
+    }
+
+    // Try to load and recompile the fragment shader
+    if( !fragment_source_filename_.empty() && compiled_new_shaders_ok )
+    {
+        compiled_new_shaders_ok = loadFragmentSourceFile( fragment_source_filename_ )
+                                && compile_shader( GL_FRAGMENT_SHADER, new_fragment_shader, fragment_source_ );
+        if( !compiled_new_shaders_ok )
+            TJH_SHADER_PRINTF("ERROR: failed to recompile fragment shader in program '%i'\n", program_ );
+    }
+
+    // Try to load and recompile the geometry shader
+    if( !geometry_source_filename_.empty() && compiled_new_shaders_ok )
+    {
+        compiled_new_shaders_ok = loadGeometrySourceFile( geometry_source_filename_ )
+                                && compile_shader( GL_GEOMETRY_SHADER, new_geometry_shader, geometry_source_ );
+        if( !compiled_new_shaders_ok )
+            TJH_SHADER_PRINTF("ERROR: failed to recompile geometry shader in program '%i'\n", program_ );
+    }
+    
+    if( compiled_new_shaders_ok )
+    {
+        // Attach and create the shader programs
+        glBindFragDataLocation( new_program, 0, "outDiffuse" );
+        glAttachShader( new_program, new_vertex_shader );
+        glAttachShader( new_program, new_fragment_shader );
+        glAttachShader( new_program, new_geometry_shader );
+        glLinkProgram( new_program );
+
+        // Call shutdown to free the old resources
+        shutdown();
+
+        // Now substitute our new resources
+        program_            = new_program;
+        vertex_shader_      = new_vertex_shader;
+        fragment_shader_    = new_vertex_shader;
+        geometry_shader_    = new_geometry_shader;
+    }
+    else
+    {
+        // If something went wrong, free any resources that were created
+        if( new_program ) {
+            glDeleteProgram( new_program );
+        }
+        if( new_vertex_shader ) {
+            glDeleteShader( new_vertex_shader );
+        }
+        if( new_fragment_shader ) {
+            glDeleteShader( new_fragment_shader );
+        }
+        if( new_geometry_shader ) {
+            glDeleteShader( new_geometry_shader );
+        }
+    }
+
+    return compiled_new_shaders_ok;
 }
 
 void TJH_SHADER_TYPENAME::shutdown()
