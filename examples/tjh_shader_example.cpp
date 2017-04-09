@@ -14,57 +14,9 @@ int main(int argc, char const *argv[])
 	GLuint vao = 0;
 
 	{
-		// A handy macro to help you define glsl directly in your source code
-		// produces unhelpful error messages
-		#define GLSL(src) "#version 330 core\n" #src
-
-		const GLchar* vert_src = GLSL(
-		    in vec3 pos;
-		    in vec3 col;
-		    out vec3 vCol;
-		    void main()
-		    {
-		        gl_Position = vec4(pos, 1.0);
-		        vCol = col;
-		    }
-		    );
-		const GLchar* geo_src = GLSL(
-		    layout(points) in;
-		    layout(line_strip, max_vertices = 11) out;
-		    in vec3 vCol[];
-		    out vec3 gCol;
-
-		    const float PI = 3.1415926;
-
-		    void main()
-		    {
-
-		    gCol = vCol[0];
-
-			    for (int i = 0; i <= 10; i++) {
-			        float ang = PI * 2.0 / 10.0 * i;
-
-			        vec4 offset = vec4(cos(ang) * 0.3, -sin(ang) * 0.4, 0.0, 0.0);
-			        gl_Position = gl_in[0].gl_Position + offset;
-
-			        EmitVertex();
-			    }
-
-		        EndPrimitive();
-		    }
-		    );
-		const GLchar* frag_src = GLSL(
-		    in vec3 gCol;
-		    out vec4 outDiffuse;
-		    void main()
-		    {
-		       outDiffuse = vec4(gCol,1);
-		    }
-		    );
-
-		shader.setVertexSourceString( std::string(vert_src) );
-		shader.setFragmentSourceString( std::string(frag_src) );
-		shader.setGeometrySourceString( std::string(geo_src) );
+		shader.loadVertexSourceFile( "examples/tjh_shader_example_vert.glsl" );
+		shader.loadGeometrySourceFile( "examples/tjh_shader_example_geo.glsl" );
+		shader.loadFragmentSourceFile( "examples/tjh_shader_example_frag.glsl" );
 		if( !shader.init() )
         {
             printf("oh no! Error creating shader!\n" );
