@@ -42,13 +42,12 @@
 ////// TODO ////////////////////////////////////////////////////////////////////
 //
 // - write the readme
-// - add geometry shader
 // - multiple output buffers
 // - can I reduce includes in implementation section
-// - Make the shader reloadable while the game is running!!
 // - apply rule of 3/5/0. Delete copy constructors but implemenet move constructors?
+// - OPTIMISATION: only reload files that changed??
 // - test OpenGL ES compatability
-//  - track pitch and yaw?, calculate and set from pos and dir without storing it?
+// - track pitch and yaw?, calculate and set from pos and dir without storing it?
 
 ////// EXAMPLE SHADER CODE /////////////////////////////////////////////////////
 //
@@ -89,12 +88,12 @@ const GLchar* frag_src = GLSL(
 // Change this to use a custom printf like function for your platform, for example SDL_Log
 #define TJH_SHADER_PRINTF printf
 // Either set this correctly or comment it out if you would preffer tjh_shader.h did not include glew
-#define TJH_SHADER_GLEW_H_LOCATION <GL/glew.h>
+#define TJH_SHADER_GLEW_H <GL/glew.h>
 
 ////// HEADER //////////////////////////////////////////////////////////////////
 
-#ifdef TJH_SHADER_GLEW_H_LOCATION
-    #include TJH_SHADER_GLEW_H_LOCATION
+#ifdef TJH_SHADER_GLEW_H
+    #include TJH_SHADER_GLEW_H
 #endif
 #include <string>
 
@@ -144,21 +143,21 @@ public:
 
     // Don't forget to bind shaders before trying to get uniforms or attributes
     GLint getUniformLocation( const GLchar* name ) const;
-    GLint getAttribLocation( const GLchar* name )  const;
-    GLuint getProgram()                            const { return program_; }
+    GLint getAttribLocation( const GLchar* name ) const;
+    GLuint getProgram() const { return program_; }
 
 private:
-    // Loads the text file 'filename' and passes the contents to the pointer
+    // Loads the text file 'filename' and sets file_content to the content of the file
     // returns true on success
-    bool load_file( std::string filename, std::string& file_contents  );
+    bool load_file( std::string filename, std::string& file_content ) const;
     // returns true on success
-    bool compile_shader( GLenum type, GLuint& shader, const std::string& source );
+    bool compile_shader( GLenum type, GLuint& shader, const std::string& source ) const;
     // returns true if the shader did compile ok
-    bool did_shader_compile_ok( GLuint shader );
+    bool did_shader_compile_ok( GLuint shader ) const;
 
     // Converts GLenums such as GL_VERTEX_SHADER to a string
-    std::string glenumShaderTypeToString( GLenum type );
-    int glenumTypeToSizeInBytes( GLenum type );
+    std::string glenumShaderTypeToString( GLenum type ) const;
+    int         glenumTypeToSizeInBytes( GLenum type ) const;
 
     GLuint program_             = 0;
     GLuint vertex_shader_       = 0;
@@ -306,7 +305,7 @@ bool TJH_SHADER_TYPENAME::reload()
     
     if( compiled_new_shaders_ok )
     {
-        // Attach and create the shader programs
+        // Attach and create the shader new programs
         glBindFragDataLocation( new_program, 0, "outDiffuse" );
         glAttachShader( new_program, new_vertex_shader );
         glAttachShader( new_program, new_fragment_shader );
@@ -451,7 +450,7 @@ void TJH_SHADER_TYPENAME::setGeometrySourceString( const std::string& source )
     tried_set_geometry_source_ = true;
 }
 
-bool TJH_SHADER_TYPENAME::load_file( std::string filename, std::string& file_contents )
+bool TJH_SHADER_TYPENAME::load_file( std::string filename, std::string& file_content ) const
 {   
     std::ifstream file( shader_base_path_ + filename );
     if( !file.good() )
@@ -463,12 +462,12 @@ bool TJH_SHADER_TYPENAME::load_file( std::string filename, std::string& file_con
     std::stringstream buffer;
     buffer << file.rdbuf();
 
-    file_contents = buffer.str();
+    file_content = buffer.str();
 
     return true;
 }
 
-bool TJH_SHADER_TYPENAME::compile_shader( GLenum type, GLuint& shader, const std::string& source )
+bool TJH_SHADER_TYPENAME::compile_shader( GLenum type, GLuint& shader, const std::string& source ) const
 {
     if( source.empty() )
     {
@@ -492,7 +491,7 @@ bool TJH_SHADER_TYPENAME::compile_shader( GLenum type, GLuint& shader, const std
     return did_shader_compile_ok( shader );
 }
 
-bool TJH_SHADER_TYPENAME::did_shader_compile_ok( GLuint shader )
+bool TJH_SHADER_TYPENAME::did_shader_compile_ok( GLuint shader ) const
 {
     // Check the shader was compiled succesfully
     GLint status;
@@ -520,7 +519,7 @@ bool TJH_SHADER_TYPENAME::did_shader_compile_ok( GLuint shader )
     return true;
 }
 
-std::string TJH_SHADER_TYPENAME::glenumShaderTypeToString( GLenum type )
+std::string TJH_SHADER_TYPENAME::glenumShaderTypeToString( GLenum type ) const
 {
     switch( type )
     {
@@ -534,7 +533,7 @@ std::string TJH_SHADER_TYPENAME::glenumShaderTypeToString( GLenum type )
     }
 }
 
-int TJH_SHADER_TYPENAME::glenumTypeToSizeInBytes( GLenum type )
+int TJH_SHADER_TYPENAME::glenumTypeToSizeInBytes( GLenum type ) const
 {
     switch( type )
     {
