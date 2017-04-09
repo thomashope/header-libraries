@@ -105,8 +105,10 @@ int main()
         curr_ticks = SDL_GetTicks();
         dt = (curr_ticks - prev_ticks) / 1000.0f;
 
-        // Handle input
+        // Update keyboard
         keyboard = SDL_GetKeyboardState( NULL );
+
+        // Move camera
         if( keyboard[SDL_SCANCODE_E] ) {
             camera.moveUp( SPEED * dt );
         }
@@ -125,6 +127,8 @@ int main()
         if( keyboard[SDL_SCANCODE_D] ) {
             camera.moveRight( SPEED * dt );
         }
+
+        // Rotate camera
         if( keyboard[SDL_SCANCODE_LEFT] ) {
             camera.rotateLeft( 2.0f * dt );
         }
@@ -137,7 +141,6 @@ int main()
         if( keyboard[SDL_SCANCODE_DOWN] ) {
             camera.rotateDown( 2.0f * dt );
         }
-
 
         // Clear the screen
         glClearColor( 0.0f, 0.0f, 0.0f, 1.0f );

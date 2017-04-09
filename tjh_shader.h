@@ -45,6 +45,7 @@
 // - add geometry shader
 // - multiple output buffers
 // - can I reduce includes in implementation section
+// - Make the shader reloadable while the game is running!!
 // - apply rule of 3/5/0. Delete copy constructors but implemenet move constructors?
 // - test OpenGL ES compatability
 //  - track pitch and yaw?, calculate and set from pos and dir without storing it?
@@ -105,8 +106,12 @@ public:
 
     // Returns true if shader compilation was a success, false if there was an error
     bool init();
-    // Can be used to explicitly clean up OpenGL resources, not required
+    // Can be used to explicitly clean up OpenGL resources, automatically called by destructor
     void shutdown();
+    // If shader source is a file, reloads and recompiles
+    // NOTE: things like uniform locations may change as a result!
+    // If reloading fails, the shader will not be changed
+    bool reload();
 
     // Call this so we know where to look for the shaders
     static void setShaderBasePath( std::string path ) { shader_base_path_ = path; }
@@ -124,23 +129,23 @@ public:
 
     // Returns true if the source files were loaded successfully
     // false if they could not be loaded
-    bool loadVertexSourceFile( std::string file_path );
-    bool loadFragmentSourceFile( std::string file_path ); 
-    bool loadGeometrySourceFile( std::string file_path ); 
+    bool loadVertexSourceFile( std::string filename );
+    bool loadFragmentSourceFile( std::string filename ); 
+    bool loadGeometrySourceFile( std::string filename ); 
 
     // Sets the shader source strings directly
-    void setVertexSourceString( const std::string& source ) { vertex_source_ = source; }
-    void setFragmentSourceString( const std::string& source ) { fragment_source_ = source; }
-    void setGeometrySourceString( const std::string& source ) { geometry_source_ = source; tried_set_geometry_source_ = true; }
+    void setVertexSourceString( const std::string& source );
+    void setFragmentSourceString( const std::string& source );
+    void setGeometrySourceString( const std::string& source );
 
     // Bind the shader to the OpenGL context, ready for use
-    void bind() const { glUseProgram( program_ ); }
+    void bind()   const { glUseProgram( program_ ); }
     void unbind() const { glUseProgram( 0 ); }
 
     // Don't forget to bind shaders before trying to get uniforms or attributes
     GLint getUniformLocation( const GLchar* name ) const;
-    GLint getAttribLocation( const GLchar* name ) const;
-    GLuint getProgram() const { return program_; }
+    GLint getAttribLocation( const GLchar* name )  const;
+    GLuint getProgram()                            const { return program_; }
 
 private:
     // Loads the text file 'filename' and passes the contents to the pointer
@@ -155,15 +160,19 @@ private:
     std::string glenumShaderTypeToString( GLenum type );
     int glenumTypeToSizeInBytes( GLenum type );
 
-    GLuint program_;
-    GLuint vertex_shader_;
-    GLuint fragment_shader_;
-    GLuint geometry_shader_;
+    GLuint program_             = 0;
+    GLuint vertex_shader_       = 0;
+    GLuint fragment_shader_     = 0;
+    GLuint geometry_shader_     = 0;
 
-    std::string vertex_source_;
-    std::string fragment_source_;
-    std::string geometry_source_;
-    bool tried_set_geometry_source_;
+    std::string vertex_source_filename_     = "";
+    std::string fragment_source_filename_   = "";
+    std::string geometry_source_filename_   = "";
+
+    std::string vertex_source_              = "";
+    std::string fragment_source_            = "";
+    std::string geometry_source_            = "";
+    bool tried_set_geometry_source_         = false;
 
     static std::string shader_base_path_;
 };
@@ -186,13 +195,7 @@ std::string TJH_SHADER_TYPENAME::shader_base_path_ = "";
     #define PATH_SEPERATOR '/'
 #endif
 
-TJH_SHADER_TYPENAME::TJH_SHADER_TYPENAME() :
-program_(0),
-vertex_shader_(0),
-fragment_shader_(0),
-geometry_shader_(0),
-tried_set_geometry_source_(false)
-{}
+TJH_SHADER_TYPENAME::TJH_SHADER_TYPENAME() {}
 
 TJH_SHADER_TYPENAME::~TJH_SHADER_TYPENAME()
 {
@@ -301,7 +304,6 @@ GLint TJH_SHADER_TYPENAME::getUniformLocation( const GLchar* name ) const
     return uniform;
 }
 
-
 GLint TJH_SHADER_TYPENAME::getAttribLocation( const GLchar* name ) const
 {
     GLint attribute = glGetAttribLocation( program_, name );
@@ -344,20 +346,42 @@ bool TJH_SHADER_TYPENAME::setVertexAttribArrays( const std::initializer_list<Ver
     return success;
 }
 
-bool TJH_SHADER_TYPENAME::loadVertexSourceFile( std::string file_path )
+bool TJH_SHADER_TYPENAME::loadVertexSourceFile( std::string filename )
 {
-    return load_file( file_path, vertex_source_ );
+    vertex_source_filename_ = filename;
+    return load_file( filename, vertex_source_ );
 }
 
-bool TJH_SHADER_TYPENAME::loadFragmentSourceFile( std::string file_path )
+bool TJH_SHADER_TYPENAME::loadFragmentSourceFile( std::string filename )
 {
-    return load_file( file_path, fragment_source_ );
+    fragment_source_filename_ = filename;
+    return load_file( filename, fragment_source_ );
 }
 
-bool TJH_SHADER_TYPENAME::loadGeometrySourceFile( std::string file_path )
+bool TJH_SHADER_TYPENAME::loadGeometrySourceFile( std::string filename )
 {
+    geometry_source_filename_ = filename;
     tried_set_geometry_source_ = true;
-    return load_file( file_path, geometry_source_ );
+    return load_file( filename, geometry_source_ );
+}
+
+void TJH_SHADER_TYPENAME::setVertexSourceString( const std::string& source )
+{
+    vertex_source_ = source;
+    vertex_source_filename_.clear();
+}
+
+void TJH_SHADER_TYPENAME::setFragmentSourceString( const std::string& source )
+{
+    fragment_source_ = source;
+    fragment_source_filename_.clear();
+}
+
+void TJH_SHADER_TYPENAME::setGeometrySourceString( const std::string& source )
+{
+    geometry_source_ = source;
+    geometry_source_filename_.clear();
+    tried_set_geometry_source_ = true;
 }
 
 bool TJH_SHADER_TYPENAME::load_file( std::string filename, std::string& file_contents )
@@ -402,7 +426,7 @@ bool TJH_SHADER_TYPENAME::compile_shader( GLenum type, GLuint& shader, const std
 }
 
 bool TJH_SHADER_TYPENAME::did_shader_compile_ok( GLuint shader )
-{    
+{
     // Check the shader was compiled succesfully
     GLint status;
     glGetShaderiv( shader, GL_COMPILE_STATUS, &status );
@@ -442,6 +466,7 @@ std::string TJH_SHADER_TYPENAME::glenumShaderTypeToString( GLenum type )
     default: return "UNKNOWN";
     }
 }
+
 int TJH_SHADER_TYPENAME::glenumTypeToSizeInBytes( GLenum type )
 {
     switch( type )
