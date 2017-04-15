@@ -97,7 +97,7 @@ namespace TJH_DRAW_NAMESPACE
 
 //    void point( GLfloat x, GLfloat y );
 //    void line( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2 );
-    void quad( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2 );
+    void quad( GLfloat x, GLfloat y, GLfloat width, GLfloat height );
     void tri( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2, GLfloat x3, GLfloat y3 );
     // void circle( GLfloat x, GLfloat y, GLfloat radius, int segments = 16 );
 
@@ -120,14 +120,18 @@ namespace TJH_DRAW_NAMESPACE
     GLuint vao_             = 0;
     GLuint vbo_             = 0;
     GLuint shader_program_  = 0;
-    GLint colour_uniform_   = -1;
     bool requires_flush_    = false;
     std::vector<GLfloat> vertex_buffer_;
+    float red_              = 1.0f;
+    float green_            = 1.0f;
+    float blue_             = 1.0f;
+    float alpha_            = 1.0f;
 
     // 'PRIVATE' MEMBER FUNCTIONS
     void flush_triangles();
     void push2( GLfloat one, GLfloat two );
     void push3( GLfloat one, GLfloat two, GLfloat three );
+    void push4( GLfloat one, GLfloat two, GLfloat three, GLfloat four );
 
     // LIBRARY FUNCTIONS ///////////////////////////////////////////////////////
 
@@ -136,17 +140,20 @@ namespace TJH_DRAW_NAMESPACE
         const char* vert_src =
             "#version 150 core\n"
             "in vec2 vPos;"
+            "in vec4 vCol;"
+            "out vec4 fCol;"
             "void main()"
             "{"
-            "    gl_Position = vec4(vPos, 0.0, 1.0);"
+            "   fCol = vCol;"
+            "   gl_Position = vec4(vPos, 0.0, 1.0);"
             "}";
         const char* frag_src =
             "#version 150 core\n"
-            "uniform vec4 colour;"
+            "in vec4 fCol;"
             "out vec4 outColour;"
             "void main()"
             "{"
-            "    outColour = colour;"
+            "    outColour = fCol;"
             "}";
         GLuint vertex_shader_ = glCreateShader(GL_VERTEX_SHADER);
         GLuint fragment_shader_ = glCreateShader(GL_FRAGMENT_SHADER);
@@ -197,8 +204,6 @@ namespace TJH_DRAW_NAMESPACE
         glDeleteShader(vertex_shader_);
         glDeleteShader(fragment_shader_);
 
-        colour_uniform_ = glGetUniformLocation(shader_program_, "colour");
-
         glGenVertexArrays(1, &vao_);
         glBindVertexArray(vao_);
         glGenBuffers(1, &vbo_);
@@ -207,7 +212,12 @@ namespace TJH_DRAW_NAMESPACE
         GLint posAtrib = glGetAttribLocation(shader_program_, "vPos");
         if( posAtrib == -1 ) TJH_DRAW_PRINTF("ERROR: position attribute not found in shader\n");
         glEnableVertexAttribArray(posAtrib);
-        glVertexAttribPointer(posAtrib, 2, GL_FLOAT, GL_FALSE, 0, 0);
+        glVertexAttribPointer(posAtrib, 2, GL_FLOAT, GL_FALSE, 6*sizeof(GLfloat), 0);
+
+        GLint colAtrib = glGetAttribLocation(shader_program_, "vCol");
+        if( posAtrib == -1 ) TJH_DRAW_PRINTF("ERROR: Colour attribute not found in shader\n");
+        glEnableVertexAttribArray(colAtrib);
+        glVertexAttribPointer(colAtrib, 4, GL_FLOAT, GL_FALSE, 6*sizeof(GLfloat), (void*)(2*sizeof(float)));
 
         glBindVertexArray(0);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -261,7 +271,10 @@ namespace TJH_DRAW_NAMESPACE
 
     void setColor(GLfloat r, GLfloat g, GLfloat b, GLfloat a )
     {
-        glUniform4f( colour_uniform_, r, g, b, a );
+        red_    = r;
+        green_  = g;
+        blue_   = b;
+        alpha_  = a;
     }
 
     // PRIMATIVES //////////////////////////////////////////////////////////////
@@ -288,22 +301,22 @@ namespace TJH_DRAW_NAMESPACE
         glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STREAM_DRAW);
         glDrawArrays(GL_LINES, 0, 2);
     }
-    void quad( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2 )
+    void quad( GLfloat x1, GLfloat y1, GLfloat width, GLfloat height )
     {
-        push2( x1, y1 );
-        push2( x2, y1 );
-        push2( x2, y2 );
+        push2( x1, y1 );                    push4( red_, green_, blue_, alpha_ );
+        push2( x1 + width, y1 );            push4( red_, green_, blue_, alpha_ );
+        push2( x1 + width, y1 + height );   push4( red_, green_, blue_, alpha_ );
 
-        push2( x1, y1 );
-        push2( x2, y2 );
-        push2( x1, y2 );
+        push2( x1, y1 );                    push4( red_, green_, blue_, alpha_ );
+        push2( x1 + width, y1 + height );   push4( red_, green_, blue_, alpha_ );
+        push2( x1, y1 + height );           push4( red_, green_, blue_, alpha_ );
         requires_flush_ = true;
     }
     void tri( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2, GLfloat x3, GLfloat y3 )
     {
-        push2( x1, y1 );
-        push2( x2, y2 );
-        push2( x3, y3 );
+        push2( x1, y1 ); push4( red_, green_, blue_, alpha_ );
+        push2( x2, y2 ); push4( red_, green_, blue_, alpha_ );
+        push2( x3, y3 ); push4( red_, green_, blue_, alpha_ );
         requires_flush_ = true;
     }
     void circle( GLfloat x, GLfloat y, GLfloat radius, int segments )
@@ -334,6 +347,13 @@ namespace TJH_DRAW_NAMESPACE
         vertex_buffer_.push_back( one );
         vertex_buffer_.push_back( two );
         vertex_buffer_.push_back( three );
+    }
+    void push4( GLfloat one, GLfloat two, GLfloat three, GLfloat four )
+    {
+        vertex_buffer_.push_back( one );
+        vertex_buffer_.push_back( two );
+        vertex_buffer_.push_back( three );
+        vertex_buffer_.push_back( four );
     }
 }
 // Prevent the implementation from leaking into subsequent includes
