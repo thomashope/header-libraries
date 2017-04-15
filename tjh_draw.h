@@ -37,15 +37,15 @@
 
 ////// TODO ////////////////////////////////////////////////////////////////////
 //
-// - void setResolution( int width, int height );
-// - optional float type
-// - batch renders and draw on call to end();
-//     - draw lines with narrow quads, variable line width
-//     - when drawing shapes in line mode, lines expand inwards to preserve specified size
+//  - void setResolution( int width, int height );
+//  - batch renders and draw on call to end();
+//      - when drawing shapes in line mode, lines expand inwards to preserve specified size
+//      - convert line() to use triangles
+//      - convert circle() to use triangles
 
 ////// README //////////////////////////////////////////////////////////////////
 //
-// INSTALLATION:
+// USAGE:
 //
 //  1) #define TJH_DRAW_IMPLEMENTATION then #include this file in *ONE*
 //  .cpp file in your project.
@@ -95,11 +95,11 @@ namespace TJH_DRAW_NAMESPACE
 
     // PRIMATIVES //////////////////////////////////////////////////////////////
 
-    void point( GLfloat x, GLfloat y );
-    void line( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2 );
+//    void point( GLfloat x, GLfloat y );
+//    void line( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2 );
     void quad( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2 );
-    // TODO: tri( x, y, x, y, x, y )
-    void circle( GLfloat x, GLfloat y, GLfloat radius, int segments = 16 );
+    void tri( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2, GLfloat x3, GLfloat y3 );
+    // void circle( GLfloat x, GLfloat y, GLfloat radius, int segments = 16 );
 
     extern const float PI;
 }
@@ -108,17 +108,26 @@ namespace TJH_DRAW_NAMESPACE
 
 ////// IMPLEMENTATION //////////////////////////////////////////////////////////
 #ifdef TJH_DRAW_IMPLEMENTATION
-    
+
+#include <vector>
+
 namespace TJH_DRAW_NAMESPACE
 {
-    // PUBLIC MEMBERS
+    // PUBLIC MEMBER VARIABLES
     const float PI = 3.14159265359;
 
-    // 'PRIVATE' MEMBERS
-    GLuint vao_ = 0;
-    GLuint vbo_ = 0;
-    GLuint shader_program_ = 0;
-    GLint colour_uniform_ = -1;
+    // 'PRIVATE' MEMBER VARIABLES
+    GLuint vao_             = 0;
+    GLuint vbo_             = 0;
+    GLuint shader_program_  = 0;
+    GLint colour_uniform_   = -1;
+    bool requires_flush_    = false;
+    std::vector<GLfloat> vertex_buffer_;
+
+    // 'PRIVATE' MEMBER FUNCTIONS
+    void flush_triangles();
+    void push2( GLfloat one, GLfloat two );
+    void push3( GLfloat one, GLfloat two, GLfloat three );
 
     // LIBRARY FUNCTIONS ///////////////////////////////////////////////////////
 
@@ -220,10 +229,26 @@ namespace TJH_DRAW_NAMESPACE
 
     void end()
     {
+        if( requires_flush_ )
+        {
+            flush_triangles();
+        }
+
         // TOOD: This should restore the previous state instead
         glUseProgram(0);
         glBindVertexArray(0);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
+    }
+
+    void flush_triangles()
+    {
+        glBindVertexArray(vao_);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo_);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(vertex_buffer_[0]) * vertex_buffer_.size(), vertex_buffer_.data(), GL_STREAM_DRAW);
+        glDrawArrays(GL_TRIANGLES, 0, vertex_buffer_.size());
+
+        requires_flush_ = false;
+        vertex_buffer_.clear();
     }
 
     // STATE ///////////////////////////////////////////////////////////////////
@@ -265,16 +290,21 @@ namespace TJH_DRAW_NAMESPACE
     }
     void quad( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2 )
     {
-        glBindVertexArray(vao_);
-        glBindBuffer(GL_ARRAY_BUFFER, vbo_);
+        push2( x1, y1 );
+        push2( x2, y1 );
+        push2( x2, y2 );
 
-        GLfloat verts[] = {
-            x1, y1, x2, y1, x2, y2,
-            x1, y1, x2, y2, x1, y2
-        };
-
-        glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STREAM_DRAW);
-        glDrawArrays(GL_TRIANGLES, 0, 6);
+        push2( x1, y1 );
+        push2( x2, y2 );
+        push2( x1, y2 );
+        requires_flush_ = true;
+    }
+    void tri( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2, GLfloat x3, GLfloat y3 )
+    {
+        push2( x1, y1 );
+        push2( x2, y2 );
+        push2( x3, y3 );
+        requires_flush_ = true;
     }
     void circle( GLfloat x, GLfloat y, GLfloat radius, int segments )
     {
@@ -291,6 +321,19 @@ namespace TJH_DRAW_NAMESPACE
         glDrawArrays(GL_LINE_LOOP, 0, segments);
 
         delete[] verts;
+    }
+
+    // UTILS //////////////////////////////////////////////////////////////////
+    void push2( GLfloat one, GLfloat two )
+    {
+        vertex_buffer_.push_back( one );
+        vertex_buffer_.push_back( two );
+    }
+    void push3( GLfloat one, GLfloat two, GLfloat three )
+    {
+        vertex_buffer_.push_back( one );
+        vertex_buffer_.push_back( two );
+        vertex_buffer_.push_back( three );
     }
 }
 // Prevent the implementation from leaking into subsequent includes
