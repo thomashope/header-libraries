@@ -46,7 +46,7 @@ int main()
     Shader shader;
     shader.setVertexSourceString( std::string(vert_src) );
     shader.setFragmentSourceString( std::string(frag_src) );
-    if( !shader.init() )
+    if( !shader.compileAndLink() )
     {
         std::cout << "ERROR: failed to init shader!" << std::endl;
     }

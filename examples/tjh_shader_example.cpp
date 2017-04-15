@@ -17,7 +17,7 @@ int main(int argc, char const *argv[])
 		shader.loadVertexSourceFile( "examples/tjh_shader_example_vert.glsl" );
 		shader.loadGeometrySourceFile( "examples/tjh_shader_example_geo.glsl" );
 		shader.loadFragmentSourceFile( "examples/tjh_shader_example_frag.glsl" );
-		if( !shader.init() )
+		if( !shader.compileAndLink() )
         {
             printf("oh no! Error creating shader!\n" );
         }

@@ -104,7 +104,7 @@ public:
     ~TJH_SHADER_TYPENAME();
 
     // Returns true if shader compilation was a success, false if there was an error
-    bool init();
+    bool compileAndLink();
     // Can be used to explicitly clean up OpenGL resources, automatically called by destructor
     void shutdown();
     // If shader source is a file, reloads and recompiles
@@ -150,13 +150,16 @@ private:
     // Loads the text file 'filename' and sets file_content to the content of the file
     // returns true on success
     bool load_file( std::string filename, std::string& file_content ) const;
+    // Tries to compile 'source' as a shader with the given 'type', stores result in 'shader'
     // returns true on success
     bool compile_shader( GLenum type, GLuint& shader, const std::string& source ) const;
+    // Checks the given shader for errors, printing them if any were found
     // returns true if the shader did compile ok
     bool did_shader_compile_ok( GLuint shader ) const;
 
     // Converts GLenums such as GL_VERTEX_SHADER to a string
     std::string glenumShaderTypeToString( GLenum type ) const;
+    // Get the size in bytes of a GL_xxx type such as GL_FLOAT or GL_SHORT
     int         glenumTypeToSizeInBytes( GLenum type ) const;
 
     GLuint program_             = 0;
@@ -201,7 +204,7 @@ TJH_SHADER_TYPENAME::~TJH_SHADER_TYPENAME()
     shutdown();
 }
 
-bool TJH_SHADER_TYPENAME::init()
+bool TJH_SHADER_TYPENAME::compileAndLink()
 {
     program_ = glCreateProgram();
 
