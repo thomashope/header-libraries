@@ -155,6 +155,10 @@ namespace TJH_WINDOW_NAMESPACE
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
         SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
 
+        // Assume we want basic multisampling
+        SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
+        SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 4);
+
         sdl_window = SDL_CreateWindow( title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, SDL_WINDOW_OPENGL );
         if( sdl_window == NULL )
         {
@@ -173,6 +177,9 @@ namespace TJH_WINDOW_NAMESPACE
         glewExperimental = GL_TRUE;
         GLenum error = glewInit();
         if( error != GLEW_OK ) TJH_WINDOW_PRINTF("ERROR: starting glew %d", error);
+
+        // Turn on multisampling in opengl
+        glEnable(GL_MULTISAMPLE);
     #endif
 
         // try to set Vsync by default, don't really care if it doesn't work though...
