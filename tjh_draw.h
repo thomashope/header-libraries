@@ -92,10 +92,12 @@ namespace TJH_DRAW_NAMESPACE
     //      Then have a cool pixel art looking type thing
     void clear( GLfloat r, GLfloat g, GLfloat b, GLfloat a = 1.0f );
     void setColor( GLfloat r, GLfloat g, GLfloat b, GLfloat a = 1.0f );
+    void setResolution( GLfloat width, GLfloat height );
+    void setResolution( GLfloat x_offset, GLfloat y_offset, GLfloat width, GLfloat height );
 
     // PRIMATIVES //////////////////////////////////////////////////////////////
 
-//    void point( GLfloat x, GLfloat y );
+    void point( GLfloat x, GLfloat y );
 //    void line( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2 );
     void quad( GLfloat x, GLfloat y, GLfloat width, GLfloat height );
     void tri( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2, GLfloat x3, GLfloat y3 );
@@ -121,31 +123,40 @@ namespace TJH_DRAW_NAMESPACE
     GLuint vbo_             = 0;
     GLuint shader_program_  = 0;
     bool requires_flush_    = false;
-    std::vector<GLfloat> vertex_buffer_;
     float red_              = 1.0f;
     float green_            = 1.0f;
     float blue_             = 1.0f;
     float alpha_            = 1.0f;
+
+    GLint projection_uniform_   = 0;
+    float width_                = 1.0f;
+    float height_               = 1.0f;
+    float x_offset_             = 0.0f;
+    float y_offset_             = 0.0f;
+
+    std::vector<GLfloat> vertex_buffer_;
 
     // 'PRIVATE' MEMBER FUNCTIONS
     void flush_triangles();
     void push2( GLfloat one, GLfloat two );
     void push3( GLfloat one, GLfloat two, GLfloat three );
     void push4( GLfloat one, GLfloat two, GLfloat three, GLfloat four );
+    void send_projection_matrix();
 
     // LIBRARY FUNCTIONS ///////////////////////////////////////////////////////
 
-    void init()
+    void init( GLfloat width, GLfloat height )
     {
         const char* vert_src =
             "#version 150 core\n"
+            "uniform mat4 projection;"
             "in vec2 vPos;"
             "in vec4 vCol;"
             "out vec4 fCol;"
             "void main()"
             "{"
             "   fCol = vCol;"
-            "   gl_Position = vec4(vPos, 0.0, 1.0);"
+            "   gl_Position = projection * vec4(vPos, 0.0, 1.0);"
             "}";
         const char* frag_src =
             "#version 150 core\n"
@@ -201,8 +212,10 @@ namespace TJH_DRAW_NAMESPACE
         glBindFragDataLocation( shader_program_, 0, "outColour");
         glLinkProgram( shader_program_ );
         glUseProgram( shader_program_ );
-        glDeleteShader(vertex_shader_);
-        glDeleteShader(fragment_shader_);
+        glDeleteShader( vertex_shader_ );
+        glDeleteShader( fragment_shader_ );
+            
+        projection_uniform_ = glGetUniformLocation( shader_program_, "projection" );
 
         glGenVertexArrays(1, &vao_);
         glBindVertexArray(vao_);
@@ -219,6 +232,8 @@ namespace TJH_DRAW_NAMESPACE
         glEnableVertexAttribArray(colAtrib);
         glVertexAttribPointer(colAtrib, 4, GL_FLOAT, GL_FALSE, 6*sizeof(GLfloat), (void*)(2*sizeof(float)));
 
+        setResolution( width, height );
+
         glBindVertexArray(0);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         glUseProgram(0);
@@ -228,13 +243,13 @@ namespace TJH_DRAW_NAMESPACE
     {
         glDeleteVertexArrays( 1, &vao_ );
         vao_ = 0;
-        glDeleteProgram(shader_program_);
+        glDeleteProgram( shader_program_ );
     }
 
     void begin()
     {
         // store previous values and set stuff, see dear imgui
-        glUseProgram(shader_program_);
+        glUseProgram( shader_program_ );
     }
 
     void end()
@@ -268,7 +283,6 @@ namespace TJH_DRAW_NAMESPACE
         glClearColor( r, g, b, a );
         glClear( GL_COLOR_BUFFER_BIT );
     }
-
     void setColor(GLfloat r, GLfloat g, GLfloat b, GLfloat a )
     {
         red_    = r;
@@ -276,18 +290,22 @@ namespace TJH_DRAW_NAMESPACE
         blue_   = b;
         alpha_  = a;
     }
+    void setResolution( GLfloat width, GLfloat height )
+    {
+        width_ = width; height_ = height;
+        send_projection_matrix();
+    }
+    void setResolution( GLfloat x_offset, GLfloat y_offset, GLfloat width, GLfloat height )
+    {
+        x_offset_ = x_offset; y_offset_ = y_offset; width_ = width; height_ = height;
+        send_projection_matrix();
+    }
 
     // PRIMATIVES //////////////////////////////////////////////////////////////
 
     void point( GLfloat x, GLfloat y )
     {
-        glBindVertexArray(vao_);
-        glBindBuffer(GL_ARRAY_BUFFER, vbo_);
-
-        GLfloat verts[] = { x, y };
-
-        glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STREAM_DRAW);
-        glDrawArrays(GL_POINTS, 0, 1);
+        quad( x, y, 1.0f, 1.0f );
     }
     void line( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2 )
     {
@@ -354,6 +372,22 @@ namespace TJH_DRAW_NAMESPACE
         vertex_buffer_.push_back( two );
         vertex_buffer_.push_back( three );
         vertex_buffer_.push_back( four );
+    }
+    void send_projection_matrix()
+    {
+        glUseProgram( shader_program_ );
+
+        GLfloat xs =  2.0f / width_;     // x scale
+        GLfloat ys = -2.0f / height_;    // y scale
+        GLfloat xo = -1.0f - x_offset_ / width_; // x offset
+        GLfloat yo =  1.0f - y_offset_ / height_; // y offset
+        GLfloat proj[16] = {
+            xs,  0,  0,  0,
+             0, ys,  0,  0,
+             0,  0,  1,  0,
+            xo, yo,  0,  1
+        };
+        glUniformMatrix4fv( projection_uniform_, 1, GL_FALSE, proj );
     }
 }
 // Prevent the implementation from leaking into subsequent includes

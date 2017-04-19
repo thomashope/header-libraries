@@ -5,12 +5,15 @@
 #define TJH_DRAW_IMPLEMENTATION
 #include "../tjh_draw.h"
 
+const int WIDTH = 800;
+const int HEIGHT = 600;
+bool multisample = true;
+
 int main(int argc, char const *argv[])
 {
-	Window::init( "Window Title!", 800, 600 );
-	Window::setVsync( true );
+	Window::init( "Window Title!", WIDTH, HEIGHT );
 
-	Draw::init();
+	Draw::init( 320, 240 );
 
 	bool running = true;
 	while( running )
@@ -19,6 +22,16 @@ int main(int argc, char const *argv[])
 		while( SDL_PollEvent( &event ) )
 		{
 			if( event.type == SDL_QUIT ) running = false;
+            if( event.type == SDL_KEYDOWN ) {
+                // Toggle multisampling with the space bar
+                if( event.key.keysym.scancode == SDL_SCANCODE_SPACE ) {
+                    multisample = !multisample;
+                    // Random forum posts suggest this doesn't work at runtime on all hardware
+                    // Appears to work on my MBP with AMD Radeon R9 M370X 2048 MB/Intel Iris Pro 1536 MB
+                    if( multisample ) glEnable(GL_MULTISAMPLE);
+                    else glDisable(GL_MULTISAMPLE);
+                }
+            }
 		}
 
 		Draw::clear( 0, 0, 0 );
@@ -26,14 +39,21 @@ int main(int argc, char const *argv[])
 		// You should call Begin before you do any actual drawing
 		Draw::begin();
 		{
-			Draw::setColor( 1, 1, 1 );
-			Draw::quad( -0.2, -0.2, 0.2, 0.2 );
-
-            Draw::setColor( 0, 1, 1 );
-            Draw::quad( 0.5, 0.5, 0.1, 0.1 );
-
+            // Give us some corners so we know whats going down
+			Draw::setColor( 0, 0, 1 );
+            Draw::quad( 0, 0, 8, 8 );
 			Draw::setColor( 1, 0, 1 );
-			Draw::tri( -0.1, -0.1, 0, 0.1, 0.1, -0.1 );
+            Draw::quad( 312, 0, 8, 8 );
+			Draw::setColor( 0, 1, 1 );
+            Draw::quad( 0, 232, 8, 38 );
+			Draw::setColor( 1, 1, 1 );
+            Draw::quad( 312, 232, 8, 8 );
+
+            // Draw a bunch of points
+            // Multisampling will make points less than perfect
+            for( int i = 100; i < 200; i += 2 ) {
+                Draw::point( i, 100 );
+            }
 		}
 		Draw::end();
 
