@@ -38,6 +38,7 @@ Much love, Tom
     - conversion between HLSL and RGB with values [0,1], or [0,255]
     - could use glm vector types for rather than (float r, float g, float b)?
     - what other colour functions are usefull? here are some ideas https://github.com/WetDesertRock/vivid
+    - perhaps incorporate this into tjh_draw.h
 - tjh_screen_logger.h?
     - print debug log output graphicaly
     - can also draw static strings
