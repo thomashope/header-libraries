@@ -35,14 +35,6 @@
 // LIBNAME vX.X.X which is Copyright (C) HOLDER_NAME and distributed under the
 // LICENSE_NAME license. See here for more LINK_TO_RELEVANT_PAGE
 
-////// TODO ////////////////////////////////////////////////////////////////////
-//
-// - rename TJH_xxx_H defines, find-replace the string _xxx_
-// - rename tjh_xxx.h in usage section of documentation
-// - list dependancies, their licenses, and their respective copyright holders
-// - write ABOUT documentation
-// - add examples to USAGE documentation
-
 ////// DOCUMENTATION ///////////////////////////////////////////////////////////
 //
 // ABOUT
@@ -68,6 +60,14 @@
 // Change this to use a custom printf like function, for example SDL_Log
 #define TJH_xxx_PRINTF printf
 
+////// TODO ////////////////////////////////////////////////////////////////////
+//
+// - rename TJH_xxx_H defines, find-replace the string _xxx_
+// - rename tjh_xxx.h in usage section of documentation
+// - list dependancies, their licenses, and their respective copyright holders
+// - write ABOUT documentation
+// - add examples to USAGE documentation
+
 ////// HEADER //////////////////////////////////////////////////////////////////
 
 #endif // END HEADER
@@ -76,4 +76,5 @@
 
 #ifdef TJH_xxx_H_IMPLEMENTATION
 
+#undef TJH_xxx_H_IMPLEMENTATION
 #endif // END IMPLEMENTATION
