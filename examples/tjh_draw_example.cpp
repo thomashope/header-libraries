@@ -54,6 +54,9 @@ int main(int argc, char const *argv[])
             for( int i = 100; i < 200; i += 2 ) {
                 Draw::point( i, 100 );
             }
+
+			Draw::setColor( 0.5, 0.5, 0.5 );
+            Draw::circle( 200, 200, 32, 20 );
 		}
 		Draw::end();
 
