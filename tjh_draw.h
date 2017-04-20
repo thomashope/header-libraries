@@ -35,14 +35,6 @@
 // Programable pipline OpenGL. You can load all your OpenGL functions with a
 // library like glew.h. See here for more http://glew.sourceforge.net/
 
-////// TODO ////////////////////////////////////////////////////////////////////
-//
-//  - void setResolution( int width, int height );
-//  - batch renders and draw on call to end();
-//      - when drawing shapes in line mode, lines expand inwards to preserve specified size
-//      - convert line() to use triangles
-//      - convert circle() to use triangles
-
 ////// README //////////////////////////////////////////////////////////////////
 //
 // USAGE:
@@ -72,6 +64,16 @@
 // Change this to use a custom printf like function for your platform, for example SDL_Log
 #define TJH_DRAW_PRINTF printf
 
+////// TODO ////////////////////////////////////////////////////////////////////
+//
+//  - convert line() to use triangles, optional settable width
+//  - test setResolution x_offset and y_offset
+//      - i implemented something along those lines but i don't know if it actually works
+//  - solid shapes have a line draw mode
+//      - when drawing shapes in line mode, lines expand inwards to preserve specified size
+//  - textured triangle
+//  - textured quad
+
 ////// HEADER //////////////////////////////////////////////////////////////////
 
 namespace TJH_DRAW_NAMESPACE
@@ -85,11 +87,6 @@ namespace TJH_DRAW_NAMESPACE
 
     // STATE ///////////////////////////////////////////////////////////////////
 
-    // TODO: void setResolution( int width, int height );
-    //      This would scale all subsequent calls to use the given virtual
-    //      resolution. This would mean 'points' would have to be actual
-    //      quads. Allowing the user to do something like setResolution(32,32)
-    //      Then have a cool pixel art looking type thing
     void clear( GLfloat r, GLfloat g, GLfloat b, GLfloat a = 1.0f );
     void setColor( GLfloat r, GLfloat g, GLfloat b, GLfloat a = 1.0f );
     void setResolution( GLfloat width, GLfloat height );
@@ -97,11 +94,11 @@ namespace TJH_DRAW_NAMESPACE
 
     // PRIMATIVES //////////////////////////////////////////////////////////////
 
-    void point( GLfloat x, GLfloat y );
+    void point( GLfloat x, GLfloat y, GLfloat size = 1.0f );
 //    void line( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2 );
     void quad( GLfloat x, GLfloat y, GLfloat width, GLfloat height );
-    void tri( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2, GLfloat x3, GLfloat y3 );
-    // void circle( GLfloat x, GLfloat y, GLfloat radius, int segments = 16 );
+    void triangle( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2, GLfloat x3, GLfloat y3 );
+    void circle( GLfloat x, GLfloat y, GLfloat radius, int segments = 16 );
 
     extern const float PI;
 }
@@ -112,6 +109,7 @@ namespace TJH_DRAW_NAMESPACE
 #ifdef TJH_DRAW_IMPLEMENTATION
 
 #include <vector>
+#include <cmath>
 
 namespace TJH_DRAW_NAMESPACE
 {
@@ -168,7 +166,7 @@ namespace TJH_DRAW_NAMESPACE
             "}";
         GLuint vertex_shader_ = glCreateShader(GL_VERTEX_SHADER);
         GLuint fragment_shader_ = glCreateShader(GL_FRAGMENT_SHADER);
-        if( vertex_shader_ == 0 || fragment_shader_ == 0 ) TJH_DRAW_PRINTF("ERROR: cold not init shaders!");
+        if( vertex_shader_ == 0 || fragment_shader_ == 0 ) { TJH_DRAW_PRINTF("ERROR: cold not init shaders!"); }
 
         // Compile and check the vertex shader
         glShaderSource( vertex_shader_, 1, &vert_src, NULL );
@@ -223,12 +221,12 @@ namespace TJH_DRAW_NAMESPACE
         glBindBuffer(GL_ARRAY_BUFFER, vbo_);
 
         GLint posAtrib = glGetAttribLocation(shader_program_, "vPos");
-        if( posAtrib == -1 ) TJH_DRAW_PRINTF("ERROR: position attribute not found in shader\n");
+        if( posAtrib == -1 ) { TJH_DRAW_PRINTF("ERROR: position attribute not found in shader\n"); }
         glEnableVertexAttribArray(posAtrib);
         glVertexAttribPointer(posAtrib, 2, GL_FLOAT, GL_FALSE, 6*sizeof(GLfloat), 0);
 
         GLint colAtrib = glGetAttribLocation(shader_program_, "vCol");
-        if( posAtrib == -1 ) TJH_DRAW_PRINTF("ERROR: Colour attribute not found in shader\n");
+        if( posAtrib == -1 ) { TJH_DRAW_PRINTF("ERROR: Colour attribute not found in shader\n"); }
         glEnableVertexAttribArray(colAtrib);
         glVertexAttribPointer(colAtrib, 4, GL_FLOAT, GL_FALSE, 6*sizeof(GLfloat), (void*)(2*sizeof(float)));
 
@@ -303,9 +301,9 @@ namespace TJH_DRAW_NAMESPACE
 
     // PRIMATIVES //////////////////////////////////////////////////////////////
 
-    void point( GLfloat x, GLfloat y )
+    void point( GLfloat x, GLfloat y, GLfloat size )
     {
-        quad( x, y, 1.0f, 1.0f );
+        quad( x, y, size, size );
     }
     void line( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2 )
     {
@@ -330,7 +328,7 @@ namespace TJH_DRAW_NAMESPACE
         push2( x1, y1 + height );           push4( red_, green_, blue_, alpha_ );
         requires_flush_ = true;
     }
-    void tri( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2, GLfloat x3, GLfloat y3 )
+    void triangle( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2, GLfloat x3, GLfloat y3 )
     {
         push2( x1, y1 ); push4( red_, green_, blue_, alpha_ );
         push2( x2, y2 ); push4( red_, green_, blue_, alpha_ );
@@ -339,19 +337,15 @@ namespace TJH_DRAW_NAMESPACE
     }
     void circle( GLfloat x, GLfloat y, GLfloat radius, int segments )
     {
-        GLfloat* verts = new GLfloat[segments * 2];
         float fraction = (PI*2) / (float)segments;
-
         for( int i = 0; i < segments; i++ )
         {
-            verts[i*2]   = x + sin(fraction*i) * radius;
-            verts[i*2+1] = y + cos(fraction*i) * radius;
+            float a1 = x + std::sin(fraction*i) * radius;
+            float b1 = y + std::cos(fraction*i) * radius;
+            float a2 = x + std::sin(fraction*(i+1)) * radius;
+            float b2 = y + std::cos(fraction*(i+1)) * radius;
+            triangle( x, y, a1, b1, a2, b2 ); 
         }
-
-        glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * 2 * segments, verts, GL_STREAM_DRAW);
-        glDrawArrays(GL_LINE_LOOP, 0, segments);
-
-        delete[] verts;
     }
 
     // UTILS //////////////////////////////////////////////////////////////////
