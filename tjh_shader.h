@@ -165,9 +165,9 @@ private:
     bool did_shader_compile_ok( GLuint shader ) const;
 
     // Converts GLenums such as GL_VERTEX_SHADER to a string
-    std::string glenumShaderTypeToString( GLenum type ) const;
+    std::string glenum_shader_to_string( GLenum shader ) const;
     // Get the size in bytes of a GL_xxx type such as GL_FLOAT or GL_SHORT
-    int glenumTypeToSizeInBytes( GLenum type ) const;
+    int glenum_type_to_size_in_bytes( GLenum type ) const;
 
     GLuint program_             = 0;
     GLuint vertex_shader_       = 0;
@@ -458,7 +458,7 @@ bool TJH_SHADER_TYPENAME::setVertexAttribArrays( const std::initializer_list<Ver
     GLsizei stride = 0;
     for( const auto& desc : desc_list )
     {
-        int size = glenumTypeToSizeInBytes( desc.type );
+        int size = glenum_type_to_size_in_bytes( desc.type );
         stride += size * desc.count;
         offset_list.push_back( stride - size * desc.count );
     }
@@ -542,14 +542,14 @@ bool TJH_SHADER_TYPENAME::compile_shader( GLenum type, GLuint& shader, const std
 {
     if( source.empty() )
     {
-        TJH_SHADER_PRINTF( "ERROR: '%s' source was empty! (not loaded/set)\n", glenumShaderTypeToString(type).c_str() );
+        TJH_SHADER_PRINTF( "ERROR: '%s' source was empty! (not loaded/set)\n", glenum_shader_to_string(type).c_str() );
         return false;
     }
 
     shader = glCreateShader( type );
     if( shader == 0 )
     {
-        TJH_SHADER_PRINTF( "ERROR: could not create shader, %s\n", glenumShaderTypeToString(type).c_str() );
+        TJH_SHADER_PRINTF( "ERROR: could not create shader, %s\n", glenum_shader_to_string(type).c_str() );
         return false;
     }
 
@@ -582,7 +582,7 @@ bool TJH_SHADER_TYPENAME::did_shader_compile_ok( GLuint shader ) const
         // TODO: if we have the source then could we print the line that was broken?
         GLint type;
         glGetShaderiv( shader, GL_SHADER_TYPE, &type );
-        TJH_SHADER_PRINTF( "ERROR: compiling shader %s\n", glenumShaderTypeToString(static_cast<GLenum>(type)).c_str() );
+        TJH_SHADER_PRINTF( "ERROR: compiling shader %s\n", glenum_shader_to_string(static_cast<GLenum>(type)).c_str() );
         TJH_SHADER_PRINTF( "%s", buffer.data() );
         return false;
     }
@@ -590,7 +590,7 @@ bool TJH_SHADER_TYPENAME::did_shader_compile_ok( GLuint shader ) const
     return true;
 }
 
-std::string TJH_SHADER_TYPENAME::glenumShaderTypeToString( GLenum type ) const
+std::string TJH_SHADER_TYPENAME::glenum_shader_to_string( GLenum shader ) const
 {
     switch( type )
     {
@@ -604,7 +604,7 @@ std::string TJH_SHADER_TYPENAME::glenumShaderTypeToString( GLenum type ) const
     }
 }
 
-int TJH_SHADER_TYPENAME::glenumTypeToSizeInBytes( GLenum type ) const
+int TJH_SHADER_TYPENAME::glenum_type_to_size_in_bytes( GLenum type ) const
 {
     switch( type )
     {
