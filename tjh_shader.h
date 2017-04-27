@@ -39,16 +39,6 @@
 // Modified BSD License, Mesa 3-D Licsense (MIT) and the Khronos License (MIT).
 // See here for more http://glew.sourceforge.net/
 
-////// TODO ////////////////////////////////////////////////////////////////////
-//
-// - write the readme
-// - multiple output buffers
-// - can I reduce includes in implementation section
-// - apply rule of 3/5/0. Delete copy constructors but implemenet move constructors?
-// - OPTIMISATION: only reload files that changed??
-// - test OpenGL ES compatability
-// - track pitch and yaw?, calculate and set from pos and dir without storing it?
-
 ////// EXAMPLE SHADER CODE /////////////////////////////////////////////////////
 //
 // Some basic GLSL code to get you started
@@ -90,6 +80,15 @@ const GLchar* frag_src = GLSL(
 // Either set this correctly or comment it out if you would preffer tjh_shader.h did not include glew
 #define TJH_SHADER_GLEW_H <GL/glew.h>
 
+////// TODO ////////////////////////////////////////////////////////////////////
+//
+// - write the readme
+// - multiple output buffers
+// - OPTIMISATION: only reload files that changed
+// - test OpenGL ES compatability
+// - DONE: apply rule of 3/5/0. Delete copy constructors but implemenet move constructors?
+//  - TEST: that I did the move copy/assignment correctly???
+
 ////// HEADER //////////////////////////////////////////////////////////////////
 
 #ifdef TJH_SHADER_GLEW_H
@@ -100,16 +99,24 @@ const GLchar* frag_src = GLSL(
 class TJH_SHADER_TYPENAME
 {
 public:
-    TJH_SHADER_TYPENAME();
+    TJH_SHADER_TYPENAME() {};
     ~TJH_SHADER_TYPENAME();
+
+    // Do not allow copy construction or assignment
+    TJH_SHADER_TYPENAME( const TJH_SHADER_TYPENAME& other ) = delete;
+    TJH_SHADER_TYPENAME& operator = ( const TJH_SHADER_TYPENAME& other ) = delete;
+
+    // Allow move constructor and assignment operators
+    TJH_SHADER_TYPENAME( TJH_SHADER_TYPENAME&& other );
+    TJH_SHADER_TYPENAME& operator = ( TJH_SHADER_TYPENAME&& other );
 
     // Returns true if shader compilation was a success, false if there was an error
     bool compileAndLink();
     // Can be used to explicitly clean up OpenGL resources, automatically called by destructor
     void shutdown();
     // If shader source is a file, reloads and recompiles
-    // NOTE: things like uniform locations may change as a result!
     // If reloading fails, the shader will not be changed
+    // NOTE: things like uniform locations may change as a result!
     bool reload();
 
     // Call this so we know where to look for the shaders
@@ -160,7 +167,7 @@ private:
     // Converts GLenums such as GL_VERTEX_SHADER to a string
     std::string glenumShaderTypeToString( GLenum type ) const;
     // Get the size in bytes of a GL_xxx type such as GL_FLOAT or GL_SHORT
-    int         glenumTypeToSizeInBytes( GLenum type ) const;
+    int glenumTypeToSizeInBytes( GLenum type ) const;
 
     GLuint program_             = 0;
     GLuint vertex_shader_       = 0;
@@ -177,6 +184,9 @@ private:
     bool tried_set_geometry_source_         = false;
 
     static std::string shader_base_path_;
+
+    // Set all member variables to their defaults without deleting resources
+    void resetMembersToDefaults();
 };
 
 #endif // END TJH_SHADER_H
@@ -197,11 +207,69 @@ std::string TJH_SHADER_TYPENAME::shader_base_path_ = "";
     #define PATH_SEPERATOR '/'
 #endif
 
-TJH_SHADER_TYPENAME::TJH_SHADER_TYPENAME() {}
-
+// Destructor
 TJH_SHADER_TYPENAME::~TJH_SHADER_TYPENAME()
 {
     shutdown();
+}
+// Move constructor
+TJH_SHADER_TYPENAME::TJH_SHADER_TYPENAME( TJH_SHADER_TYPENAME&& other )
+{
+    program_            = other.program_;
+    vertex_shader_      = other.vertex_shader_;
+    fragment_shader_    = other.fragment_shader_;
+    geometry_shader_    = other.geometry_shader_;
+
+    vertex_source_filename_     = other.vertex_source_filename_;
+    fragment_source_filename_   = other.fragment_source_filename_;
+    geometry_source_filename_   = other.geometry_source_filename_;
+
+    vertex_source_              = other.vertex_source_;
+    fragment_source_            = other.fragment_source_;
+    geometry_source_            = other.geometry_source_;
+    tried_set_geometry_source_  = other.tried_set_geometry_source_;
+
+    other.resetMembersToDefaults();
+}
+// Move assignment operator
+TJH_SHADER_TYPENAME& TJH_SHADER_TYPENAME::operator = ( TJH_SHADER_TYPENAME&& other )
+{
+    if( this != &other )
+    {
+        program_            = other.program_;
+        vertex_shader_      = other.vertex_shader_;
+        fragment_shader_    = other.fragment_shader_;
+        geometry_shader_    = other.geometry_shader_;
+
+        vertex_source_filename_     = other.vertex_source_filename_;
+        fragment_source_filename_   = other.fragment_source_filename_;
+        geometry_source_filename_   = other.geometry_source_filename_;
+
+        vertex_source_              = other.vertex_source_;
+        fragment_source_            = other.fragment_source_;
+        geometry_source_            = other.geometry_source_;
+        tried_set_geometry_source_  = other.tried_set_geometry_source_;
+
+        other.resetMembersToDefaults();
+    }
+    return *this;
+}
+
+void TJH_SHADER_TYPENAME::resetMembersToDefaults()
+{
+    program_             = 0;
+    vertex_shader_       = 0;
+    fragment_shader_     = 0;
+    geometry_shader_     = 0;
+
+    vertex_source_filename_     = "";
+    fragment_source_filename_   = "";
+    geometry_source_filename_   = "";
+
+    vertex_source_              = "";
+    fragment_source_            = "";
+    geometry_source_            = "";
+    tried_set_geometry_source_  = false; 
 }
 
 bool TJH_SHADER_TYPENAME::compileAndLink()
