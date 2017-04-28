@@ -41,11 +41,6 @@
 // Modified BSD License, Mesa 3-D Licsense (MIT) and the Khronos License (MIT)
 // license. See here for more http://glew.sourceforge.net/
 
-////// TODO ////////////////////////////////////////////////////////////////////
-//
-// - choose requested opengl version
-// - set fullscreen state
-
 ////// DOCUMENTATION ///////////////////////////////////////////////////////////
 //
 // ABOUT
@@ -100,6 +95,14 @@
 #define TJH_WINDOW_NAMESPACE Window
 // Change this to use a custom printf like function for your platform, for example SDL_Log
 #define TJH_WINDOW_PRINTF printf
+
+////// TODO ////////////////////////////////////////////////////////////////////
+//
+// - choose requested opengl version
+// - set fullscreen state
+// - optional antialiasing
+// - make is so you don't need to modify this file to change the #defines
+//   have them check to see if they are already defined first
 
 ////// HEADER //////////////////////////////////////////////////////////////////
 
