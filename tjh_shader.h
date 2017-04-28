@@ -592,7 +592,7 @@ bool TJH_SHADER_TYPENAME::did_shader_compile_ok( GLuint shader ) const
 
 std::string TJH_SHADER_TYPENAME::glenum_shader_to_string( GLenum shader ) const
 {
-    switch( type )
+    switch( shader )
     {
     case GL_VERTEX_SHADER:          return "GL_VERTEX_SHADER";
     case GL_TESS_CONTROL_SHADER:    return "GL_TESS_CONTROL_SHADER";
