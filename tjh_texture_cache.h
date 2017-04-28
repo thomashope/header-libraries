@@ -69,8 +69,17 @@
 // - list dependancies, their licenses, and their respective copyright holders
 // - write ABOUT documentation
 // - add examples to USAGE documentation
+// - make the texture cache actually cache
+// - make it so defines can be changed from outside the file
+// - single textures are reloadable
+// - all textures are reloadable
+// - textures can be bound to different slots
+// - report errors
+// - called can request the number of channels
 
 ////// HEADER //////////////////////////////////////////////////////////////////
+
+#include TJH_TEXTURE_CACHE_GLEW_H_LOCATION
 
 namespace TJH_TEXTURE_CACHE_NAMESPACE
 {
@@ -97,8 +106,6 @@ namespace TJH_TEXTURE_CACHE_NAMESPACE
 #ifdef TJH_TEXTURE_CACHE_IMPLEMENTATION
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
-
-#include TJH_TEXTURE_CACHE_GLEW_H_LOCATION
 
 namespace TJH_TEXTURE_CACHE_NAMESPACE
 {
