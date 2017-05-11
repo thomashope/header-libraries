@@ -1,3 +1,5 @@
+#include <iostream>
+
 #define TJH_WINDOW_IMPLEMENTATION
 #include "../tjh_window.h"
 
@@ -6,8 +8,6 @@
 
 #define TJH_TEXTURE_CACHE_IMPLEMENTATION
 #include "../tjh_texture_cache.h"
-
-#include "../stb_image.h"
 
 const int WIDTH  = 800;
 const int HEIGHT = 600;
@@ -65,6 +65,8 @@ int main(int argc, char const *argv[])
 
     Texture::load("sample.png");
 
+    std::cout << Texture::cacheSize() << " textures in the cache." << std::endl;
+
     SDL_Event event;
     bool done = false;
     while( !done )
@@ -76,6 +78,10 @@ int main(int argc, char const *argv[])
                 if( event.key.keysym.sym == SDLK_q ) done = true;
             }
         }
+
+        // Try to reload all images in the cache
+        // NOTE: this is a bad idea to do every frame in real code!
+        Texture::cacheReload();
 
         // Clear the screen to black
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -90,6 +96,10 @@ int main(int argc, char const *argv[])
     glDeleteBuffers(1, &ebo);
     glDeleteBuffers(1, &vbo);
     glDeleteVertexArrays(1, &vao);
+
+    std::cout << "Clearing the cache." << std::endl;
+    Texture::cacheClear();
+    std::cout << Texture::cacheSize() << " textures in the cache." << std::endl;
 
     Window::shutdown();
     return 0;

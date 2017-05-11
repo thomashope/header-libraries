@@ -86,22 +86,25 @@ namespace TJH_TEXTURE_CACHE_NAMESPACE
 {
     struct TJH_TEXTURE_CACHE_HANDLE_TYPENAME
     {
-        int width           = -1;
-        int height          = -1;
-        GLint s_wrap        = GL_CLAMP_TO_EDGE;
-        GLint t_wrap        = GL_CLAMP_TO_EDGE;
-        GLint min_filter    = GL_LINEAR;
-        GLint max_filter    = GL_LINEAR;
-        GLuint texture      = 0;
-        char channels       = 0;
+        int width            = -1;
+        int height           = -1;
+        GLint s_wrap         = GL_CLAMP_TO_EDGE;
+        GLint t_wrap         = GL_CLAMP_TO_EDGE;
+        GLint min_filter     = GL_LINEAR;
+        GLint max_filter     = GL_LINEAR;
+        GLuint texture       = 0;
+        char channels        = 0;
+        std::string filename = "";
 
         void bind();
     };
     
     TJH_TEXTURE_CACHE_HANDLE_TYPENAME
-    load(std::string filename, char channels = 4);
+    load( const std::string& filename, char channels = 4);
 
-    void clear();
+    void   cacheClear();    // Clear all the textures in the cache
+    size_t cacheSize();     // Get the current number of items in the cache
+    void   cacheReload();   // Reload all textures in the cache from their source files
 }
 
 #endif // END HEADER
@@ -118,16 +121,16 @@ namespace TJH_TEXTURE_CACHE_NAMESPACE
     // 'PRIVATE' MEMBER VARIABLES
     std::map<std::string, TJH_TEXTURE_CACHE_HANDLE_TYPENAME> texture_cache_;
 
-    // 'PRIVATE' MEMBER FUNCTIONS
-
+    // LIBRARY FUNCTIONS ///////////////////////////////////////////////////////
+    
     TJH_TEXTURE_CACHE_HANDLE_TYPENAME
-    load(std::string filename, char channels)
+    load( const std::string& filename, char channels )
     {
         auto it = texture_cache_.find(filename);
         if( it != texture_cache_.end() )
         {
             // Return a copy of the version in the cache
-            TJH_TEXTURE_CACHE_PRINTF( "Retrieved %s from the cache.\n", filename.c_str() );
+            TJH_TEXTURE_CACHE_PRINTF( "Retrieved '%s' from the cache.\n", filename.c_str() );
             return it->second;
         }
         else
@@ -135,15 +138,15 @@ namespace TJH_TEXTURE_CACHE_NAMESPACE
             // Load the texture in anew
             TJH_TEXTURE_CACHE_HANDLE_TYPENAME result;
             result.channels = channels;
+            result.filename = filename;
 
             unsigned char* data = nullptr;
             int n; // This is the number of channels that the image originally had, currently we don't care
 
-            // TODO: error checking if the texture failed to load
             data = stbi_load( filename.c_str(), &result.width, &result.height, &n, result.channels );
             if( !data )
             {
-                TJH_TEXTURE_CACHE_PRINTF( "ERROR: failed to load image %s\n", filename.c_str() );
+                TJH_TEXTURE_CACHE_PRINTF( "ERROR: failed to load image '%s'\n", filename.c_str() );
                 return result;
             }
 
@@ -158,30 +161,59 @@ namespace TJH_TEXTURE_CACHE_NAMESPACE
             stbi_image_free(data);
 
             texture_cache_[filename] = result;
-            TJH_TEXTURE_CACHE_PRINTF( "Added %s to the texture cache.\n", filename.c_str() );
+            TJH_TEXTURE_CACHE_PRINTF( "Added '%s' to the texture cache.\n", filename.c_str() );
 
             return result;
         }
     }
 
-    void clear()
+    void cacheClear()
     {
         // Iterate over the entire map and delete all the textures
         for( const auto& t : texture_cache_ )
         {
             glDeleteTextures( 1, &t.second.texture );
         }
-
+        // Then clear the map itself
         texture_cache_.clear();
+    }
+
+    size_t cacheSize()
+    {
+        return texture_cache_.size();
+    }
+
+    void cacheReload()
+    {
+        for( auto& t : texture_cache_ )
+        {
+            unsigned char* data = nullptr;
+            int n;
+
+            data = stbi_load( t.second.filename.c_str(), &t.second.width, &t.second.height, &n, t.second.channels );
+            if( !data )
+            {
+                TJH_TEXTURE_CACHE_PRINTF( "ERROR: failed to load image '%s'\n", t.second.filename.c_str() );
+                continue;
+            }
+
+            glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA,
+                t.second.width, t.second.height,
+                0, GL_RGBA, GL_UNSIGNED_BYTE, data );
+
+            stbi_image_free(data);
+
+            TJH_TEXTURE_CACHE_PRINTF( "Reloaded '%s'.\n", t.second.filename.c_str() );
+        }
     }
 
     void TJH_TEXTURE_CACHE_HANDLE_TYPENAME::bind()
     {
         glBindTexture( GL_TEXTURE_2D, texture );
-        glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
-        glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
-        glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
-        glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
+        glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, s_wrap );
+        glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, t_wrap );
+        glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, min_filter );
+        glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, max_filter );
     }
 }
 
