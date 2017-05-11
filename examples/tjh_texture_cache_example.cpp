@@ -63,6 +63,8 @@ int main(int argc, char const *argv[])
     Texture::Handle tex = Texture::load("sample.png");
     tex.bind();
 
+    Texture::load("sample.png");
+
     SDL_Event event;
     bool done = false;
     while( !done )

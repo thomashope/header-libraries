@@ -61,6 +61,8 @@
 #define TJH_TEXTURE_CACHE_PRINTF printf
 // Change this to use a different namespace if this one conflicts
 #define TJH_TEXTURE_CACHE_NAMESPACE Texture
+// Change this to use a different typename for the texture handles
+#define TJH_TEXTURE_CACHE_HANDLE_TYPENAME Handle
 // The place where glew.h is located
 #define TJH_TEXTURE_CACHE_GLEW_H_LOCATION <GL/glew.h>
 
@@ -69,7 +71,6 @@
 // - list dependancies, their licenses, and their respective copyright holders
 // - write ABOUT documentation
 // - add examples to USAGE documentation
-// - make the texture cache actually cache
 // - make it so defines can be changed from outside the file
 // - single textures are reloadable
 // - all textures are reloadable
@@ -83,7 +84,8 @@
 
 namespace TJH_TEXTURE_CACHE_NAMESPACE
 {
-    struct Handle {
+    struct TJH_TEXTURE_CACHE_HANDLE_TYPENAME
+    {
         int width           = -1;
         int height          = -1;
         GLint s_wrap        = GL_CLAMP_TO_EDGE;
@@ -96,7 +98,10 @@ namespace TJH_TEXTURE_CACHE_NAMESPACE
         void bind();
     };
     
-    Handle load(std::string filename, char channels = 4);
+    TJH_TEXTURE_CACHE_HANDLE_TYPENAME
+    load(std::string filename, char channels = 4);
+
+    void clear();
 }
 
 #endif // END HEADER
@@ -106,34 +111,71 @@ namespace TJH_TEXTURE_CACHE_NAMESPACE
 #ifdef TJH_TEXTURE_CACHE_IMPLEMENTATION
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
+#include <map>
 
 namespace TJH_TEXTURE_CACHE_NAMESPACE
 {
-    Handle load(std::string filename, char channels)
+    // 'PRIVATE' MEMBER VARIABLES
+    std::map<std::string, TJH_TEXTURE_CACHE_HANDLE_TYPENAME> texture_cache_;
+
+    // 'PRIVATE' MEMBER FUNCTIONS
+
+    TJH_TEXTURE_CACHE_HANDLE_TYPENAME
+    load(std::string filename, char channels)
     {
-        Handle result;
-        result.channels = channels;
+        auto it = texture_cache_.find(filename);
+        if( it != texture_cache_.end() )
+        {
+            // Return a copy of the version in the cache
+            TJH_TEXTURE_CACHE_PRINTF( "Retrieved %s from the cache.\n", filename.c_str() );
+            return it->second;
+        }
+        else
+        {
+            // Load the texture in anew
+            TJH_TEXTURE_CACHE_HANDLE_TYPENAME result;
+            result.channels = channels;
 
-        unsigned char* data = nullptr;
-        int n; // This is the number of channels that the image originally had, currently we don't care
+            unsigned char* data = nullptr;
+            int n; // This is the number of channels that the image originally had, currently we don't care
 
-        // TODO: error checking if the texture failed to load
-        data = stbi_load( filename.c_str(), &result.width, &result.height, &n, result.channels );
+            // TODO: error checking if the texture failed to load
+            data = stbi_load( filename.c_str(), &result.width, &result.height, &n, result.channels );
+            if( !data )
+            {
+                TJH_TEXTURE_CACHE_PRINTF( "ERROR: failed to load image %s\n", filename.c_str() );
+                return result;
+            }
 
-        // TODO: error checking if the texture failed to gen
-        glGenTextures( 1, &result.texture );
-        glBindTexture( GL_TEXTURE_2D, result.texture );
+            // TODO: error checking if the texture failed to gen
+            glGenTextures( 1, &result.texture );
+            glBindTexture( GL_TEXTURE_2D, result.texture );
 
-        glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA,
-            result.width, result.height,
-            0, GL_RGBA, GL_UNSIGNED_BYTE, data );
+            glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA,
+                result.width, result.height,
+                0, GL_RGBA, GL_UNSIGNED_BYTE, data );
 
-        delete[] data;
+            stbi_image_free(data);
 
-        return result;
+            texture_cache_[filename] = result;
+            TJH_TEXTURE_CACHE_PRINTF( "Added %s to the texture cache.\n", filename.c_str() );
+
+            return result;
+        }
     }
 
-    void Handle::bind()
+    void clear()
+    {
+        // Iterate over the entire map and delete all the textures
+        for( const auto& t : texture_cache_ )
+        {
+            glDeleteTextures( 1, &t.second.texture );
+        }
+
+        texture_cache_.clear();
+    }
+
+    void TJH_TEXTURE_CACHE_HANDLE_TYPENAME::bind()
     {
         glBindTexture( GL_TEXTURE_2D, texture );
         glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
