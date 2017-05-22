@@ -36,29 +36,27 @@ int main(int argc, char const *argv[])
 
 		Draw::clear( 0, 0, 0 );
 
-		// You should call Begin before you do any actual drawing
-		Draw::begin();
-		{
-            // Give us some corners so we know whats going down
-			Draw::setColor( 0, 0, 1 );
-            Draw::quad( 0, 0, 8, 8 );
-			Draw::setColor( 1, 0, 1 );
-            Draw::quad( 312, 0, 8, 8 );
-			Draw::setColor( 0, 1, 1 );
-            Draw::quad( 0, 232, 8, 38 );
-			Draw::setColor( 1, 1, 1 );
-            Draw::quad( 312, 232, 8, 8 );
+        // Give us some corners so we know whats going down
+        Draw::setColor( 0, 0, 1 );
+        Draw::quad( 0, 0, 8, 8 );
+        Draw::setColor( 1, 0, 1 );
+        Draw::quad( 312, 0, 8, 8 );
+        Draw::setColor( 0, 1, 1 );
+        Draw::quad( 0, 232, 8, 38 );
+        Draw::setColor( 1, 1, 1 );
+        Draw::quad( 312, 232, 8, 8 );
 
-            // Draw a bunch of points
-            // Multisampling will make points less than perfect
-            for( int i = 100; i < 200; i += 2 ) {
-                Draw::point( i, 100 );
-            }
+        // Draw a bunch of points
+        // Multisampling will make points less than perfect
+        for( int i = 100; i < 200; i += 2 ) {
+            Draw::point( i, 100 );
+        }
 
-			Draw::setColor( 0.5, 0.5, 0.5 );
-            Draw::circle( 200, 200, 32, 20 );
-		}
-		Draw::end();
+        Draw::setColor( 0.5, 0.5, 0.5 );
+        Draw::circle( 200, 200, 32, 20 );
+
+        // Ensure all the graphics is actually drawn
+		Draw::flush();
 
 		Window::present();
 	}

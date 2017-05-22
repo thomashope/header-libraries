@@ -66,6 +66,7 @@
 
 ////// TODO ////////////////////////////////////////////////////////////////////
 //
+//  - convert built in shader strings to rawstrings
 //  - convert line() to use triangles, optional settable width
 //  - test setResolution x_offset and y_offset
 //      - i implemented something along those lines but i don't know if it actually works
@@ -73,6 +74,7 @@
 //      - when drawing shapes in line mode, lines expand inwards to preserve specified size
 //  - textured triangle
 //  - textured quad
+//  - implement multiple states and ensure a flush on change, Colour2D, Textured2D, Colour3D, Textured3D
 
 ////// HEADER //////////////////////////////////////////////////////////////////
 
@@ -82,8 +84,7 @@ namespace TJH_DRAW_NAMESPACE
     
     void init();        // TODO: return and error flag or something?
     void shutdown();
-    void begin();
-    void end();
+    void flush();
 
     // STATE ///////////////////////////////////////////////////////////////////
 
@@ -94,7 +95,7 @@ namespace TJH_DRAW_NAMESPACE
 
     // PRIMATIVES //////////////////////////////////////////////////////////////
 
-    void point( GLfloat x, GLfloat y, GLfloat size = 1.0f );
+    void point( GLfloat x, GLfloat y );
 //    void line( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2 );
     void quad( GLfloat x, GLfloat y, GLfloat width, GLfloat height );
     void triangle( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2, GLfloat x3, GLfloat y3 );
@@ -117,10 +118,22 @@ namespace TJH_DRAW_NAMESPACE
     const float PI = 3.14159265359;
 
     // 'PRIVATE' MEMBER VARIABLES
-    GLuint vao_             = 0;
-    GLuint vbo_             = 0;
-    GLuint shader_program_  = 0;
-    bool requires_flush_    = false;
+    enum class DrawMode { Colour2D, Texture2D, Colour3D, Texture3D };
+    DrawMode current_mode_  = DrawMode::Colour2D;
+
+    GLuint colour_2d_program_   = 0;
+    GLuint texture_2d_program_  = 0;
+    GLuint colour_3d_program_   = 0;
+    GLuint texture_3d_program_  = 0;
+
+    GLuint colour_2d_vao_   = 0;
+    GLuint colour_2d_vbo_   = 0;
+    GLuint texture_2d_vao_  = 0;
+    GLuint texture_2d_vbo_  = 0;
+    GLuint colour_3d_vao_   = 0;
+    GLuint colour_3d_vbo_   = 0;
+    GLuint texture_3d_vao_  = 0;
+    GLuint texture_3d_vbo_  = 0;
     float red_              = 1.0f;
     float green_            = 1.0f;
     float blue_             = 1.0f;
@@ -135,142 +148,160 @@ namespace TJH_DRAW_NAMESPACE
     std::vector<GLfloat> vertex_buffer_;
 
     // 'PRIVATE' MEMBER FUNCTIONS
-    void flush_triangles();
     void push2( GLfloat one, GLfloat two );
     void push3( GLfloat one, GLfloat two, GLfloat three );
     void push4( GLfloat one, GLfloat two, GLfloat three, GLfloat four );
     void send_projection_matrix();
 
+    GLuint create_shader( GLenum type, const char* source );
+    GLuint create_program( GLuint vertex_shader, GLuint fragment_shader );
+
     // LIBRARY FUNCTIONS ///////////////////////////////////////////////////////
 
     void init( GLfloat width, GLfloat height )
     {
-        const char* vert_src =
-            "#version 150 core\n"
-            "uniform mat4 projection;"
-            "in vec2 vPos;"
-            "in vec4 vCol;"
-            "out vec4 fCol;"
-            "void main()"
-            "{"
-            "   fCol = vCol;"
-            "   gl_Position = projection * vec4(vPos, 0.0, 1.0);"
-            "}";
-        const char* frag_src =
-            "#version 150 core\n"
-            "in vec4 fCol;"
-            "out vec4 outColour;"
-            "void main()"
-            "{"
-            "    outColour = fCol;"
-            "}";
-        GLuint vertex_shader_ = glCreateShader(GL_VERTEX_SHADER);
-        GLuint fragment_shader_ = glCreateShader(GL_FRAGMENT_SHADER);
-        if( vertex_shader_ == 0 || fragment_shader_ == 0 ) { TJH_DRAW_PRINTF("ERROR: cold not init shaders!"); }
-
-        // Compile and check the vertex shader
-        glShaderSource( vertex_shader_, 1, &vert_src, NULL );
-        glCompileShader( vertex_shader_ );
-        GLint status = GL_TRUE;
-        glGetShaderiv( vertex_shader_, GL_COMPILE_STATUS, &status );
-        if( status != GL_TRUE )
-        {
-            TJH_DRAW_PRINTF("ERROR: draw could not compile vertex shader\n");
-            // Get the length of the error log
-            GLint log_length = 0;
-            glGetShaderiv(vertex_shader_, GL_INFO_LOG_LENGTH, &log_length);
-
-            // Now get the error log itself
-            GLchar buffer[log_length];
-            glGetShaderInfoLog( vertex_shader_, log_length, NULL, buffer );
-            TJH_DRAW_PRINTF("%s\n", buffer);
-        }
-
-        // Compile and check the fragment shader
-        glShaderSource( fragment_shader_, 1, &frag_src, NULL );
-        glCompileShader( fragment_shader_ );
-        status = GL_TRUE;
-        glGetShaderiv( fragment_shader_, GL_COMPILE_STATUS, &status );
-        if( status != GL_TRUE )
-        {
-            TJH_DRAW_PRINTF("ERROR: draw could not compile fragment shader\n");
-            // Get the length of the error log
-            GLint log_length = 0;
-            glGetShaderiv(fragment_shader_, GL_INFO_LOG_LENGTH, &log_length);
-
-            // Now get the error log itself
-            GLchar buffer[log_length];
-            glGetShaderInfoLog( fragment_shader_, log_length, NULL, buffer );
-            TJH_DRAW_PRINTF("%s\n", buffer);
-        }
-
-        shader_program_ = glCreateProgram();
-        glAttachShader( shader_program_, vertex_shader_ );
-        glAttachShader( shader_program_, fragment_shader_ );
-        glBindFragDataLocation( shader_program_, 0, "outColour");
-        glLinkProgram( shader_program_ );
-        glUseProgram( shader_program_ );
-        glDeleteShader( vertex_shader_ );
-        glDeleteShader( fragment_shader_ );
+        // Setup colour 2d shader
+       
+        const char* colour_2d_vert_src =
+            R"(#version 150 core
+            uniform mat4 projection;
+            in vec2 vPos;
+            in vec4 vCol;
+            out vec4 fCol;
+            void main()
+            {
+               fCol = vCol;
+               gl_Position = projection * vec4(vPos, 0.0, 1.0);
+            })";
+        const char* colour_2d_frag_src =
+            R"(#version 150 core
+            in vec4 fCol;
+            out vec4 outColour;
+            void main()
+            {
+                outColour = fCol;
+            })";
+        colour_2d_program_ = create_program(
+            create_shader( GL_VERTEX_SHADER, colour_2d_vert_src ),
+            create_shader( GL_FRAGMENT_SHADER, colour_2d_frag_src ) );
             
-        projection_uniform_ = glGetUniformLocation( shader_program_, "projection" );
+        projection_uniform_ = glGetUniformLocation( colour_2d_program_, "projection" );
 
-        glGenVertexArrays(1, &vao_);
-        glBindVertexArray(vao_);
-        glGenBuffers(1, &vbo_);
-        glBindBuffer(GL_ARRAY_BUFFER, vbo_);
+        glGenVertexArrays( 1, &colour_2d_vao_ );
+        glBindVertexArray( colour_2d_vao_ );
+        glGenBuffers( 1, &colour_2d_vbo_ );
+        glBindBuffer( GL_ARRAY_BUFFER, colour_2d_vbo_ );
 
-        GLint posAtrib = glGetAttribLocation(shader_program_, "vPos");
+        GLint posAtrib = glGetAttribLocation( colour_2d_program_, "vPos" );
         if( posAtrib == -1 ) { TJH_DRAW_PRINTF("ERROR: position attribute not found in shader\n"); }
-        glEnableVertexAttribArray(posAtrib);
-        glVertexAttribPointer(posAtrib, 2, GL_FLOAT, GL_FALSE, 6*sizeof(GLfloat), 0);
+        glEnableVertexAttribArray( posAtrib );
+        glVertexAttribPointer( posAtrib, 2, GL_FLOAT, GL_FALSE, 6*sizeof(GLfloat), 0 );
 
-        GLint colAtrib = glGetAttribLocation(shader_program_, "vCol");
-        if( posAtrib == -1 ) { TJH_DRAW_PRINTF("ERROR: Colour attribute not found in shader\n"); }
-        glEnableVertexAttribArray(colAtrib);
-        glVertexAttribPointer(colAtrib, 4, GL_FLOAT, GL_FALSE, 6*sizeof(GLfloat), (void*)(2*sizeof(float)));
+        GLint colAtrib = glGetAttribLocation( colour_2d_program_, "vCol" );
+        if( colAtrib == -1 ) { TJH_DRAW_PRINTF("ERROR: Colour attribute not found in shader\n"); }
+        glEnableVertexAttribArray( colAtrib );
+        glVertexAttribPointer( colAtrib, 4, GL_FLOAT, GL_FALSE, 6*sizeof(GLfloat), (void*)(2*sizeof(float)) );
 
         setResolution( width, height );
 
+        // setup colour 3d shader
+        
+        const char* colour_3d_vert_src =
+            R"(#version 150 core
+            uniform mat4 projection;
+            in vec3 vPos;
+            in vec4 vCol;
+            out vec4 fCol;
+            void main()
+            {
+               fCol = vCol;
+               gl_Position = projection * vec4(vPos, 1.0);
+            })";
+        const char* colour_3d_frag_src =
+            R"(#version 150 core
+            in vec4 fCol;
+            out vec4 outColour;
+            void main()
+            {
+                outColour = fCol;
+            })";
+//        colour_3d_program_ = create_program(
+//            create_shader( GL_VERTEX_SHADER, colour_3d_vert_src ),
+//            create_shader( GL_FRAGMENT_SHADER, colour_3d_frag_src ) );
+//
+//        glGenVertexArrays( 1, &colour_3d_vao_ );
+//        glBindVertexArray( colour_3d_vao_ );
+//        glGenBuffers( 1, &colour_3d_vbo_ );
+//        glBindBuffer( GL_ARRAY_BUFFER, colour_3d_vbo_ );
+//
+//        posAtrib = glGetAttribLocation(colour_3d_program_, "vPos");
+//        if( posAtrib == -1 ) { TJH_DRAW_PRINTF("ERROR: position attribute not found in shader\n"); }
+//        glEnableVertexAttribArray( posAtrib );
+//        glVertexAttribPointer( posAtrib, 3, GL_FLOAT, GL_FALSE, 7*sizeof(GLfloat), 0 );
+//
+//        colAtrib = glGetAttribLocation(colour_3d_program_, "vCol");
+//        if( colAtrib == -1 ) { TJH_DRAW_PRINTF("ERROR: Colour attribute not found in shader\n"); }
+//        glEnableVertexAttribArray( colAtrib );
+//        glVertexAttribPointer( colAtrib, 4, GL_FLOAT, GL_FALSE, 7*sizeof(GLfloat), (void*)(3*sizeof(float)) );
+
         glBindVertexArray(0);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         glUseProgram(0);
     }
+
+    void delete_and_zero_program( GLuint program ) { if(program){glDeleteProgram(program);program=0;} }
 
     void shutdown()
     {
-        glDeleteVertexArrays( 1, &vao_ );
-        vao_ = 0;
-        glDeleteProgram( shader_program_ );
+    #define DELETE_AND_ZERO_RESOURCE( res, delete_func ) if(res){delete_func(1,&res);res=0;}
+        DELETE_AND_ZERO_RESOURCE( colour_2d_vao_, glDeleteVertexArrays );
+        DELETE_AND_ZERO_RESOURCE( texture_2d_vao_, glDeleteVertexArrays );
+        DELETE_AND_ZERO_RESOURCE( colour_3d_vao_, glDeleteVertexArrays );
+        DELETE_AND_ZERO_RESOURCE( texture_3d_vao_, glDeleteVertexArrays );
+        DELETE_AND_ZERO_RESOURCE( colour_2d_vbo_, glDeleteBuffers );
+        DELETE_AND_ZERO_RESOURCE( texture_2d_vbo_, glDeleteBuffers );
+        DELETE_AND_ZERO_RESOURCE( colour_3d_vbo_, glDeleteBuffers );
+        DELETE_AND_ZERO_RESOURCE( texture_3d_vbo_, glDeleteBuffers );
+    #undef DELETE_AND_ZERO_RESOURCE
+
+        delete_and_zero_program( colour_2d_program_ );
+        delete_and_zero_program( texture_2d_program_ );
+        delete_and_zero_program( colour_3d_program_ );
+        delete_and_zero_program( texture_3d_program_ );
     }
 
-    void begin()
+    void flush()
     {
-        // store previous values and set stuff, see dear imgui
-        glUseProgram( shader_program_ );
-    }
-
-    void end()
-    {
-        if( requires_flush_ )
+        switch( current_mode_ )
         {
-            flush_triangles();
+        case DrawMode::Colour2D:
+            glUseProgram( colour_2d_program_ );
+            glBindVertexArray( colour_2d_vao_ );
+            glBindBuffer( GL_ARRAY_BUFFER, colour_2d_vbo_ );
+        break;
+        case DrawMode::Texture2D:
+            glUseProgram( texture_2d_program_ );
+            glBindVertexArray( texture_2d_vao_ );
+            glBindBuffer( GL_ARRAY_BUFFER, texture_2d_vbo_ );
+        break;
+        case DrawMode::Colour3D:
+            glUseProgram( colour_3d_program_ );
+            glBindVertexArray( colour_3d_vao_ );
+            glBindBuffer( GL_ARRAY_BUFFER, colour_3d_vbo_ );
+        break;
+        case DrawMode::Texture3D:
+            glUseProgram( texture_3d_program_ );
+            glBindVertexArray( texture_3d_vao_ );
+            glBindBuffer( GL_ARRAY_BUFFER, texture_3d_vbo_ );
+        break;
+        default:
+            TJH_DRAW_PRINTF("ERROR: unknown draw mode!\n");
+        break;
         }
 
-        // TOOD: This should restore the previous state instead
-        glUseProgram(0);
-        glBindVertexArray(0);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-    }
-
-    void flush_triangles()
-    {
-        glBindVertexArray(vao_);
-        glBindBuffer(GL_ARRAY_BUFFER, vbo_);
         glBufferData(GL_ARRAY_BUFFER, sizeof(vertex_buffer_[0]) * vertex_buffer_.size(), vertex_buffer_.data(), GL_STREAM_DRAW);
         glDrawArrays(GL_TRIANGLES, 0, vertex_buffer_.size());
 
-        requires_flush_ = false;
         vertex_buffer_.clear();
     }
 
@@ -301,24 +332,32 @@ namespace TJH_DRAW_NAMESPACE
 
     // PRIMATIVES //////////////////////////////////////////////////////////////
 
-    void point( GLfloat x, GLfloat y, GLfloat size )
+    void point( GLfloat x, GLfloat y )
     {
-        quad( x, y, size, size );
+        if( current_mode_ != DrawMode::Colour2D ) flush();
+
+        quad( x, y, 1, 1 );
+
+        current_mode_ = DrawMode::Colour2D;
     }
     void line( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2 )
     {
-        glBindVertexArray(vao_);
-        glBindBuffer(GL_ARRAY_BUFFER, vbo_);
-
-        GLfloat verts[] = {
-            x1, y1, x2, y2
-        };
-
-        glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STREAM_DRAW);
-        glDrawArrays(GL_LINES, 0, 2);
+        if( current_mode_ != DrawMode::Colour2D ) flush();
+        // TODO: reimplement
+//        glBindVertexArray(vao_);
+//        glBindBuffer(GL_ARRAY_BUFFER, vbo_);
+//
+//        GLfloat verts[] = {
+//            x1, y1, x2, y2
+//        };
+//
+//        glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STREAM_DRAW);
+//        glDrawArrays(GL_LINES, 0, 2);
     }
     void quad( GLfloat x1, GLfloat y1, GLfloat width, GLfloat height )
     {
+        if( current_mode_ != DrawMode::Colour2D ) flush();
+
         push2( x1, y1 );                    push4( red_, green_, blue_, alpha_ );
         push2( x1 + width, y1 );            push4( red_, green_, blue_, alpha_ );
         push2( x1 + width, y1 + height );   push4( red_, green_, blue_, alpha_ );
@@ -326,17 +365,23 @@ namespace TJH_DRAW_NAMESPACE
         push2( x1, y1 );                    push4( red_, green_, blue_, alpha_ );
         push2( x1 + width, y1 + height );   push4( red_, green_, blue_, alpha_ );
         push2( x1, y1 + height );           push4( red_, green_, blue_, alpha_ );
-        requires_flush_ = true;
+
+        current_mode_ = DrawMode::Colour2D;
     }
     void triangle( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2, GLfloat x3, GLfloat y3 )
     {
+        if( current_mode_ != DrawMode::Colour2D ) flush();
+
         push2( x1, y1 ); push4( red_, green_, blue_, alpha_ );
         push2( x2, y2 ); push4( red_, green_, blue_, alpha_ );
         push2( x3, y3 ); push4( red_, green_, blue_, alpha_ );
-        requires_flush_ = true;
+
+        current_mode_ = DrawMode::Colour2D;
     }
     void circle( GLfloat x, GLfloat y, GLfloat radius, int segments )
     {
+        if( current_mode_ != DrawMode::Colour2D ) flush();
+
         float fraction = (PI*2) / (float)segments;
         for( int i = 0; i < segments; i++ )
         {
@@ -346,9 +391,57 @@ namespace TJH_DRAW_NAMESPACE
             float b2 = y + std::cos(fraction*(i+1)) * radius;
             triangle( x, y, a1, b1, a2, b2 ); 
         }
+
+        current_mode_ = DrawMode::Colour2D;
     }
 
     // UTILS //////////////////////////////////////////////////////////////////
+    GLuint create_shader( GLenum type, const char* source )
+    {
+        GLuint shader = glCreateShader( type );
+        if( shader == 0 )
+        {
+            TJH_DRAW_PRINTF("ERROR: cold not create shaders!"); 
+            return shader;
+        }
+
+        // Compile and check the vertex shader
+        glShaderSource( shader, 1, &source, NULL );
+        glCompileShader( shader );
+        GLint status = GL_TRUE;
+        glGetShaderiv( shader, GL_COMPILE_STATUS, &status );
+        if( status != GL_TRUE )
+        {
+            TJH_DRAW_PRINTF( "ERROR: draw could not compile %d shader\n", type );
+            // Get the length of the error log
+            GLint log_length = 0;
+            glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &log_length);
+
+            // Now get the error log itself
+            GLchar buffer[log_length];
+            glGetShaderInfoLog( shader, log_length, NULL, buffer );
+            TJH_DRAW_PRINTF("%s\n", buffer);
+
+            // Clean up the resources, not that it really matters at this point
+            // we should really just crash
+            glDeleteShader( shader );
+            shader = 0;
+        }
+
+        return shader;
+    }
+    GLuint create_program( GLuint vertex_shader, GLuint fragment_shader )
+    {
+        GLuint program = glCreateProgram();
+        glAttachShader( program, vertex_shader );
+        glAttachShader( program, fragment_shader );
+        glBindFragDataLocation( program, 0, "outColour");
+        glLinkProgram( program );
+        glUseProgram( program );
+        glDeleteShader( vertex_shader );
+        glDeleteShader( fragment_shader );
+        return program;
+    }
     void push2( GLfloat one, GLfloat two )
     {
         vertex_buffer_.push_back( one );
@@ -369,7 +462,7 @@ namespace TJH_DRAW_NAMESPACE
     }
     void send_projection_matrix()
     {
-        glUseProgram( shader_program_ );
+        glUseProgram( colour_2d_program_ );
 
         GLfloat xs =  2.0f / width_;     // x scale
         GLfloat ys = -2.0f / height_;    // y scale
