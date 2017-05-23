@@ -153,7 +153,8 @@ namespace TJH_DRAW_NAMESPACE
     float blue_             = 1.0f;
     float alpha_            = 1.0f;
 
-    GLint projection_uniform_       = 0;
+    GLint colour_2d_mvp_uniform_    = 0;
+    GLint texture_2d_mvp_uniform_   = 0;
     GLint colour_3d_mvp_uniform_    = 0;
     GLint texture_3d_mvp_uniform_   = 0;
     float width_                    = 1.0f;
@@ -162,13 +163,15 @@ namespace TJH_DRAW_NAMESPACE
     float x_offset_                 = 0.0f;
     float y_offset_                 = 0.0f;
 
+    GLfloat mvp_matrix_[16]         = { 0.0f };
     std::vector<GLfloat> vertex_buffer_;
 
     // 'PRIVATE' MEMBER FUNCTIONS
     void push2( GLfloat one, GLfloat two );
     void push3( GLfloat one, GLfloat two, GLfloat three );
     void push4( GLfloat one, GLfloat two, GLfloat three, GLfloat four );
-    void send_projection_matrix();
+    void send_ortho_matrix();
+    void send_mvp_matrix();
 
     GLuint create_shader( GLenum type, const char* source );
     GLuint create_program( GLuint vertex_shader, GLuint fragment_shader );
@@ -202,7 +205,7 @@ namespace TJH_DRAW_NAMESPACE
             create_shader( GL_VERTEX_SHADER, colour_2d_vert_src ),
             create_shader( GL_FRAGMENT_SHADER, colour_2d_frag_src ) );
             
-        projection_uniform_ = glGetUniformLocation( colour_2d_program_, "projection" );
+        colour_2d_mvp_uniform_ = glGetUniformLocation( colour_2d_program_, "projection" );
 
         glGenVertexArrays( 1, &colour_2d_vao_ );
         glBindVertexArray( colour_2d_vao_ );
@@ -300,21 +303,25 @@ namespace TJH_DRAW_NAMESPACE
             glUseProgram( colour_2d_program_ );
             glBindVertexArray( colour_2d_vao_ );
             glBindBuffer( GL_ARRAY_BUFFER, colour_2d_vbo_ );
+            send_ortho_matrix();
         break;
         case DrawMode::Texture2D:
             glUseProgram( texture_2d_program_ );
             glBindVertexArray( texture_2d_vao_ );
             glBindBuffer( GL_ARRAY_BUFFER, texture_2d_vbo_ );
+            send_ortho_matrix();
         break;
         case DrawMode::Colour3D:
             glUseProgram( colour_3d_program_ );
             glBindVertexArray( colour_3d_vao_ );
             glBindBuffer( GL_ARRAY_BUFFER, colour_3d_vbo_ );
+            send_mvp_matrix();
         break;
         case DrawMode::Texture3D:
             glUseProgram( texture_3d_program_ );
             glBindVertexArray( texture_3d_vao_ );
             glBindBuffer( GL_ARRAY_BUFFER, texture_3d_vbo_ );
+            send_mvp_matrix();
         break;
         default:
             TJH_DRAW_PRINTF("ERROR: unknown draw mode!\n");
@@ -344,16 +351,22 @@ namespace TJH_DRAW_NAMESPACE
     void setScale( GLfloat width, GLfloat height )
     {
         width_ = width; height_ = height;
-        send_projection_matrix();
     }
     void setScale( GLfloat x_offset, GLfloat y_offset, GLfloat width, GLfloat height )
     {
         x_offset_ = x_offset; y_offset_ = y_offset; width_ = width; height_ = height;
-        send_projection_matrix();
     }
     void setDepth( GLfloat depth )
     {
         depth_ = depth;
+    }
+    void setMVPMatrix( GLfloat* matrix )
+    {
+        std::memcpy( mvp_matrix_, matrix, sizeof(GLfloat) * 16 );
+//        glUseProgram( colour_3d_program_ );
+//        glUniformMatrix4fv( colour_3d_mvp_uniform_, 1, GL_FALSE, matrix );
+//        glUseProgram( texture_3d_program_ );
+//        glUniformMatrix4fv( texture_3d_mvp_uniform_, 1, GL_FALSE, matrix );
     }
 
     // PRIMATIVES //////////////////////////////////////////////////////////////
@@ -523,10 +536,8 @@ namespace TJH_DRAW_NAMESPACE
         vertex_buffer_.push_back( three );
         vertex_buffer_.push_back( four );
     }
-    void send_projection_matrix()
+    void send_ortho_matrix()
     {
-        glUseProgram( colour_2d_program_ );
-
         GLfloat xs =  2.0f / width_;     // x scale
         GLfloat ys = -2.0f / height_;    // y scale
         GLfloat xo = -1.0f - x_offset_ / width_; // x offset
@@ -537,14 +548,11 @@ namespace TJH_DRAW_NAMESPACE
              0,  0,  1,  0,
             xo, yo,  0,  1
         };
-        glUniformMatrix4fv( projection_uniform_, 1, GL_FALSE, proj );
+        glUniformMatrix4fv( colour_2d_mvp_uniform_, 1, GL_FALSE, proj );
     }
-    void setMVPMatrix( GLfloat* matrix )
+    void send_mvp_matrix()
     {
-        glUseProgram( colour_3d_program_ );
-        glUniformMatrix4fv( colour_3d_mvp_uniform_, 1, GL_FALSE, matrix );
-        glUseProgram( texture_3d_program_ );
-        glUniformMatrix4fv( texture_3d_mvp_uniform_, 1, GL_FALSE, matrix );
+        glUniformMatrix4fv( colour_2d_mvp_uniform_, 1, GL_FALSE, mvp_matrix_ );
     }
 }
 // Prevent the implementation from leaking into subsequent includes
