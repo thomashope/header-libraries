@@ -1,13 +1,26 @@
 #define TJH_WINDOW_IMPLEMENTATION
 #include "../tjh_window.h"
 
+#define TJH_CAMERA_IMPLEMENTATION
+#include "../tjh_camera.h"
+
+#include <glm/gtc/type_ptr.hpp>
+
 // Define TJH_DRAW_IMPLEMENTATION in ONE .cpp file in your project
 #define TJH_DRAW_IMPLEMENTATION
 #include "../tjh_draw.h"
 
 const int WIDTH = 800;
 const int HEIGHT = 600;
+const int SPEED = 20;
 bool multisample = true;
+
+Uint32 ticks = 0;
+Uint32 prev_ticks = 0;
+
+Camera camera;
+
+void update_camera( float dt );
 
 int main(int argc, char const *argv[])
 {
@@ -34,6 +47,12 @@ int main(int argc, char const *argv[])
             }
 		}
 
+        prev_ticks = ticks;
+        ticks = SDL_GetTicks();
+        float dt = (ticks - prev_ticks)/1000.0f;
+
+        update_camera( dt );
+
 		Draw::clear( 0, 0, 0 );
 
         // Give us some corners so we know whats going down
@@ -43,8 +62,8 @@ int main(int argc, char const *argv[])
         Draw::quad( 312, 0, 8, 8 );
         Draw::setColor( 0, 1, 1 );
         Draw::quad( 0, 232, 8, 38 );
-        Draw::setColor( 1, 1, 1 );
-        Draw::quad( 312, 232, 8, 8 );
+        Draw::setColor( 0.5, 0.5, 0.5 );
+        Draw::circle( 312, 232, 8, 8 );
 
         // Draw a bunch of points
         // Multisampling will make points less than perfect
@@ -52,8 +71,16 @@ int main(int argc, char const *argv[])
             Draw::point( i, 100 );
         }
 
-        Draw::setColor( 0.5, 0.5, 0.5 );
-        Draw::circle( 200, 200, 32, 20 );
+
+        // Try a 3D shape
+
+        glm::mat4 mvp = camera.projection( WIDTH, HEIGHT ) * camera.view();
+        Draw::setMVPMatrix( glm::value_ptr( mvp[0] ) );
+        
+        Draw::setColor( 0.6, 0.6, 0.6 );
+        Draw::quad( 1, 0, 1, 1, 0, -1, -1, 0, -1, -1, 0, 1 );
+        Draw::setColor( 0.4, 0.4, 0.4 );
+        Draw::triangle( 0, 0, 0, 0, 1, 0, 1, 0, 0 );
 
         // Ensure all the graphics is actually drawn
 		Draw::flush();
@@ -64,4 +91,44 @@ int main(int argc, char const *argv[])
 	Draw::shutdown();
 	Window::shutdown();
 	return 0;
+}
+
+void update_camera( float dt )
+{
+    // Update keyboard
+    const Uint8* keyboard = SDL_GetKeyboardState( NULL );
+
+    // Move camera
+    if( keyboard[SDL_SCANCODE_E] ) {
+        camera.moveUp( SPEED * dt );
+    }
+    if( keyboard[SDL_SCANCODE_Q] ) {
+        camera.moveDown( SPEED * dt );
+    }
+    if( keyboard[SDL_SCANCODE_W] ) {
+        camera.moveForward( SPEED * dt );
+    }
+    if( keyboard[SDL_SCANCODE_S] ) {
+        camera.moveBack( SPEED * dt );
+    }
+    if( keyboard[SDL_SCANCODE_A] ) {
+        camera.moveLeft( SPEED * dt );
+    }
+    if( keyboard[SDL_SCANCODE_D] ) {
+        camera.moveRight( SPEED * dt );
+    }
+
+    // Rotate camera
+    if( keyboard[SDL_SCANCODE_LEFT] ) {
+        camera.rotateLeft( 3.0f * dt );
+    }
+    if( keyboard[SDL_SCANCODE_RIGHT] ) {
+        camera.rotateRight( 3.0f * dt );
+    }
+    if( keyboard[SDL_SCANCODE_UP] ) {
+        camera.rotateUp( 3.0f * dt );
+    }
+    if( keyboard[SDL_SCANCODE_DOWN] ) {
+        camera.rotateDown( 3.0f * dt );
+    }
 }

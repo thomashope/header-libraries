@@ -51,7 +51,8 @@
 //
 //  4) #include this file in all the files that want to draw stuff
 //
-//  5) Call `Draw::begin()` _draw the things_ then call `Draw::end()`
+//  5) Call `Draw::quad()` and such to  draw the things, then call `Draw::flush()`
+//  as the last thing you do to ensure everything is written
 //
 
 ////// LIBRARY OPTIONS /////////////////////////////////////////////////////////
@@ -66,15 +67,17 @@
 
 ////// TODO ////////////////////////////////////////////////////////////////////
 //
-//  - convert built in shader strings to rawstrings
 //  - convert line() to use triangles, optional settable width
 //  - test setResolution x_offset and y_offset
 //      - i implemented something along those lines but i don't know if it actually works
 //  - solid shapes have a line draw mode
 //      - when drawing shapes in line mode, lines expand inwards to preserve specified size
-//  - textured triangle
-//  - textured quad
-//  - implement multiple states and ensure a flush on change, Colour2D, Textured2D, Colour3D, Textured3D
+//  - 2d textured triangle
+//  - 2d textured quad
+//  - 3d quad from point, normal, width, height
+//  - 3d textured quad
+//  - 3d circle from point, line, radius
+//  - 3d sphere
 
 ////// HEADER //////////////////////////////////////////////////////////////////
 
@@ -92,6 +95,7 @@ namespace TJH_DRAW_NAMESPACE
     void setColor( GLfloat r, GLfloat g, GLfloat b, GLfloat a = 1.0f );
     void setResolution( GLfloat width, GLfloat height );
     void setResolution( GLfloat x_offset, GLfloat y_offset, GLfloat width, GLfloat height );
+    void setMVPMatrix( GLfloat* matrix );
 
     // PRIMATIVES //////////////////////////////////////////////////////////////
 
@@ -100,6 +104,14 @@ namespace TJH_DRAW_NAMESPACE
     void quad( GLfloat x, GLfloat y, GLfloat width, GLfloat height );
     void triangle( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2, GLfloat x3, GLfloat y3 );
     void circle( GLfloat x, GLfloat y, GLfloat radius, int segments = 16 );
+
+    void triangle( GLfloat x1, GLfloat y1, GLfloat z1,
+        GLfloat x2, GLfloat y2, GLfloat z2,
+        GLfloat x3, GLfloat y3, GLfloat z3 );
+    void quad( GLfloat x1, GLfloat y1, GLfloat z1,
+        GLfloat x2, GLfloat y2, GLfloat z2,
+        GLfloat x3, GLfloat y3, GLfloat z3,
+        GLfloat x4, GLfloat y4, GLfloat z4 );
 
     extern const float PI;
 }
@@ -122,9 +134,9 @@ namespace TJH_DRAW_NAMESPACE
     DrawMode current_mode_  = DrawMode::Colour2D;
 
     GLuint colour_2d_program_   = 0;
-    GLuint texture_2d_program_  = 0;
+    GLuint texture_2d_program_  = 0; // TODO: implement
     GLuint colour_3d_program_   = 0;
-    GLuint texture_3d_program_  = 0;
+    GLuint texture_3d_program_  = 0; // TODO: implement
 
     GLuint colour_2d_vao_   = 0;
     GLuint colour_2d_vbo_   = 0;
@@ -134,16 +146,19 @@ namespace TJH_DRAW_NAMESPACE
     GLuint colour_3d_vbo_   = 0;
     GLuint texture_3d_vao_  = 0;
     GLuint texture_3d_vbo_  = 0;
+
     float red_              = 1.0f;
     float green_            = 1.0f;
     float blue_             = 1.0f;
     float alpha_            = 1.0f;
 
-    GLint projection_uniform_   = 0;
-    float width_                = 1.0f;
-    float height_               = 1.0f;
-    float x_offset_             = 0.0f;
-    float y_offset_             = 0.0f;
+    GLint projection_uniform_       = 0;
+    GLint colour_3d_mvp_uniform_    = 0;
+    GLint texture_3d_mvp_uniform_   = 0;
+    float width_                    = 1.0f;
+    float height_                   = 1.0f;
+    float x_offset_                 = 0.0f;
+    float y_offset_                 = 0.0f;
 
     std::vector<GLfloat> vertex_buffer_;
 
@@ -208,14 +223,14 @@ namespace TJH_DRAW_NAMESPACE
         
         const char* colour_3d_vert_src =
             R"(#version 150 core
-            uniform mat4 projection;
+            uniform mat4 mvp;
             in vec3 vPos;
             in vec4 vCol;
             out vec4 fCol;
             void main()
             {
                fCol = vCol;
-               gl_Position = projection * vec4(vPos, 1.0);
+               gl_Position = mvp * vec4(vPos, 1.0);
             })";
         const char* colour_3d_frag_src =
             R"(#version 150 core
@@ -225,24 +240,29 @@ namespace TJH_DRAW_NAMESPACE
             {
                 outColour = fCol;
             })";
-//        colour_3d_program_ = create_program(
-//            create_shader( GL_VERTEX_SHADER, colour_3d_vert_src ),
-//            create_shader( GL_FRAGMENT_SHADER, colour_3d_frag_src ) );
-//
-//        glGenVertexArrays( 1, &colour_3d_vao_ );
-//        glBindVertexArray( colour_3d_vao_ );
-//        glGenBuffers( 1, &colour_3d_vbo_ );
-//        glBindBuffer( GL_ARRAY_BUFFER, colour_3d_vbo_ );
-//
-//        posAtrib = glGetAttribLocation(colour_3d_program_, "vPos");
-//        if( posAtrib == -1 ) { TJH_DRAW_PRINTF("ERROR: position attribute not found in shader\n"); }
-//        glEnableVertexAttribArray( posAtrib );
-//        glVertexAttribPointer( posAtrib, 3, GL_FLOAT, GL_FALSE, 7*sizeof(GLfloat), 0 );
-//
-//        colAtrib = glGetAttribLocation(colour_3d_program_, "vCol");
-//        if( colAtrib == -1 ) { TJH_DRAW_PRINTF("ERROR: Colour attribute not found in shader\n"); }
-//        glEnableVertexAttribArray( colAtrib );
-//        glVertexAttribPointer( colAtrib, 4, GL_FLOAT, GL_FALSE, 7*sizeof(GLfloat), (void*)(3*sizeof(float)) );
+
+        colour_3d_program_ = create_program(
+            create_shader( GL_VERTEX_SHADER, colour_3d_vert_src ),
+            create_shader( GL_FRAGMENT_SHADER, colour_3d_frag_src ) );
+
+        colour_3d_mvp_uniform_ = glGetUniformLocation( colour_3d_program_, "mvp" );
+
+        glGenVertexArrays( 1, &colour_3d_vao_ );
+        glBindVertexArray( colour_3d_vao_ );
+        glGenBuffers( 1, &colour_3d_vbo_ );
+        glBindBuffer( GL_ARRAY_BUFFER, colour_3d_vbo_ );
+
+        posAtrib = glGetAttribLocation(colour_3d_program_, "vPos");
+        if( posAtrib == -1 ) { TJH_DRAW_PRINTF("ERROR: position attribute not found in shader\n"); }
+        glEnableVertexAttribArray( posAtrib );
+        glVertexAttribPointer( posAtrib, 3, GL_FLOAT, GL_FALSE, 7*sizeof(GLfloat), 0 );
+
+        colAtrib = glGetAttribLocation(colour_3d_program_, "vCol");
+        if( colAtrib == -1 ) { TJH_DRAW_PRINTF("ERROR: Colour attribute not found in shader\n"); }
+        glEnableVertexAttribArray( colAtrib );
+        glVertexAttribPointer( colAtrib, 4, GL_FLOAT, GL_FALSE, 7*sizeof(GLfloat), (void*)(3*sizeof(float)) );
+
+        // Unbind  our state so we don't completely confuse the next person
 
         glBindVertexArray(0);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -332,6 +352,10 @@ namespace TJH_DRAW_NAMESPACE
 
     // PRIMATIVES //////////////////////////////////////////////////////////////
 
+    //
+    // Colour 2D primatives
+    //
+    
     void point( GLfloat x, GLfloat y )
     {
         if( current_mode_ != DrawMode::Colour2D ) flush();
@@ -393,6 +417,39 @@ namespace TJH_DRAW_NAMESPACE
         }
 
         current_mode_ = DrawMode::Colour2D;
+    }
+
+    //
+    // Colour 3D primatives
+    //
+    
+    void triangle( GLfloat x1, GLfloat y1, GLfloat z1,
+        GLfloat x2, GLfloat y2, GLfloat z2,
+        GLfloat x3, GLfloat y3, GLfloat z3 )
+    {
+        if( current_mode_ != DrawMode::Colour3D ) flush();
+
+        push3( x1, y1, z1 ); push4( red_, green_, blue_, alpha_ );
+        push3( x2, y2, z2 ); push4( red_, green_, blue_, alpha_ );
+        push3( x3, y3, z3 ); push4( red_, green_, blue_, alpha_ );
+
+        current_mode_ = DrawMode::Colour3D;
+    }
+    void quad( GLfloat x1, GLfloat y1, GLfloat z1,
+        GLfloat x2, GLfloat y2, GLfloat z2,
+        GLfloat x3, GLfloat y3, GLfloat z3,
+        GLfloat x4, GLfloat y4, GLfloat z4 )
+    {
+        if( current_mode_ != DrawMode::Colour3D ) flush();
+
+        push3( x1, y1, z1 ); push4( red_, green_, blue_, alpha_ );
+        push3( x2, y2, z2 ); push4( red_, green_, blue_, alpha_ );
+        push3( x3, y3, z3 ); push4( red_, green_, blue_, alpha_ );
+        push3( x1, y1, z1 ); push4( red_, green_, blue_, alpha_ );
+        push3( x3, y3, z3 ); push4( red_, green_, blue_, alpha_ );
+        push3( x4, y4, z4 ); push4( red_, green_, blue_, alpha_ );
+
+        current_mode_ = DrawMode::Colour3D;
     }
 
     // UTILS //////////////////////////////////////////////////////////////////
@@ -475,6 +532,13 @@ namespace TJH_DRAW_NAMESPACE
             xo, yo,  0,  1
         };
         glUniformMatrix4fv( projection_uniform_, 1, GL_FALSE, proj );
+    }
+    void setMVPMatrix( GLfloat* matrix )
+    {
+        glUseProgram( colour_3d_program_ );
+        glUniformMatrix4fv( colour_3d_mvp_uniform_, 1, GL_FALSE, matrix );
+        glUseProgram( texture_3d_program_ );
+        glUniformMatrix4fv( texture_3d_mvp_uniform_, 1, GL_FALSE, matrix );
     }
 }
 // Prevent the implementation from leaking into subsequent includes
