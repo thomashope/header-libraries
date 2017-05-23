@@ -1,0 +1,10 @@
+os: osx
+language: c++
+before_install:
+    - brew update
+install:
+    - brew install SDL2
+    - brew install glm
+    - brew install glew
+script:
+    - clang++ -std=c++14 tjh_camera_text.cpp && ./a.out
