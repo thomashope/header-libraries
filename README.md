@@ -1,5 +1,7 @@
 # Tom's Single Header Libraries
 
+[![Build Status](https://travis-ci.org/Cyphre117/header-libraries.svg?branch=master)](https://travis-ci.org/Cyphre117/header-libraries)
+
 Here are some single header libraries I made to try and make my life easier.
 Maybe you will find them usefull too!
 
@@ -27,13 +29,15 @@ Much love, Tom
 
 ## TODO
 
-- try out Travic CI
+- write a breif description of each library
+- try out Travic CI for automated testing with catch.hpp
 - write tjh_camera.h example
 - tjh_audio.h
     - OpenAL integration
     - Classes for buffer, source, global listener
     - cache audio sources
     - Decodes audio files (requires SDL_LoadWAV?, integrate stb_vorbis?)
+    - alternatively use that other guy's flac and wav single header libs
 - tjh_colour.h?
     - conversion between HLSL and RGB with values [0,1], or [0,255]
     - could use glm vector types for rather than (float r, float g, float b)?
