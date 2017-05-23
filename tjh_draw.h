@@ -68,7 +68,7 @@
 ////// TODO ////////////////////////////////////////////////////////////////////
 //
 //  - convert line() to use triangles, optional settable width
-//  - test setResolution x_offset and y_offset
+//  - test setScale x_offset and y_offset
 //      - i implemented something along those lines but i don't know if it actually works
 //  - solid shapes have a line draw mode
 //      - when drawing shapes in line mode, lines expand inwards to preserve specified size
@@ -93,8 +93,9 @@ namespace TJH_DRAW_NAMESPACE
 
     void clear( GLfloat r, GLfloat g, GLfloat b, GLfloat a = 1.0f );
     void setColor( GLfloat r, GLfloat g, GLfloat b, GLfloat a = 1.0f );
-    void setResolution( GLfloat width, GLfloat height );
-    void setResolution( GLfloat x_offset, GLfloat y_offset, GLfloat width, GLfloat height );
+    void setDepth( GLfloat depth );
+    void setScale( GLfloat width, GLfloat height );
+    void setScale( GLfloat x_offset, GLfloat y_offset, GLfloat width, GLfloat height );
     void setMVPMatrix( GLfloat* matrix );
 
     // PRIMATIVES //////////////////////////////////////////////////////////////
@@ -157,6 +158,7 @@ namespace TJH_DRAW_NAMESPACE
     GLint texture_3d_mvp_uniform_   = 0;
     float width_                    = 1.0f;
     float height_                   = 1.0f;
+    float depth_                    = 0.0f;
     float x_offset_                 = 0.0f;
     float y_offset_                 = 0.0f;
 
@@ -217,7 +219,7 @@ namespace TJH_DRAW_NAMESPACE
         glEnableVertexAttribArray( colAtrib );
         glVertexAttribPointer( colAtrib, 4, GL_FLOAT, GL_FALSE, 6*sizeof(GLfloat), (void*)(2*sizeof(float)) );
 
-        setResolution( width, height );
+        setScale( width, height );
 
         // setup colour 3d shader
         
@@ -339,15 +341,19 @@ namespace TJH_DRAW_NAMESPACE
         blue_   = b;
         alpha_  = a;
     }
-    void setResolution( GLfloat width, GLfloat height )
+    void setScale( GLfloat width, GLfloat height )
     {
         width_ = width; height_ = height;
         send_projection_matrix();
     }
-    void setResolution( GLfloat x_offset, GLfloat y_offset, GLfloat width, GLfloat height )
+    void setScale( GLfloat x_offset, GLfloat y_offset, GLfloat width, GLfloat height )
     {
         x_offset_ = x_offset; y_offset_ = y_offset; width_ = width; height_ = height;
         send_projection_matrix();
+    }
+    void setDepth( GLfloat depth )
+    {
+        depth_ = depth;
     }
 
     // PRIMATIVES //////////////////////////////////////////////////////////////
@@ -364,9 +370,9 @@ namespace TJH_DRAW_NAMESPACE
 
         current_mode_ = DrawMode::Colour2D;
     }
-    void line( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2 )
-    {
-        if( current_mode_ != DrawMode::Colour2D ) flush();
+//    void line( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2 )
+//    {
+//        if( current_mode_ != DrawMode::Colour2D ) flush();
         // TODO: reimplement
 //        glBindVertexArray(vao_);
 //        glBindBuffer(GL_ARRAY_BUFFER, vbo_);
@@ -377,7 +383,7 @@ namespace TJH_DRAW_NAMESPACE
 //
 //        glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STREAM_DRAW);
 //        glDrawArrays(GL_LINES, 0, 2);
-    }
+//    }
     void quad( GLfloat x1, GLfloat y1, GLfloat width, GLfloat height )
     {
         if( current_mode_ != DrawMode::Colour2D ) flush();
