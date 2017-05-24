@@ -118,6 +118,8 @@ namespace TJH_DRAW_NAMESPACE
     void texturedQuad( GLfloat x, GLfloat y, GLfloat width, GLfloat height );
     void texturedQuad( GLfloat x, GLfloat y, GLfloat width, GLfloat height,
         GLfloat s, GLfloat t, GLfloat s_width, GLfloat t_height );
+    void texturedTriangle( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2, GLfloat x3, GLfloat y3,
+        GLfloat s1, GLfloat t1, GLfloat s2, GLfloat t2, GLfloat s3, GLfloat t3 );
 
     extern const float PI;
 }
@@ -484,6 +486,18 @@ namespace TJH_DRAW_NAMESPACE
         push3( x, y, depth_ );                  push4( red_, green_, blue_, alpha_ ); push2( s, t );
         push3( x + width, y + height, depth_ ); push4( red_, green_, blue_, alpha_ ); push2( s + s_width, t + t_height );
         push3( x, y + height, depth_ );         push4( red_, green_, blue_, alpha_ ); push2( s, t + t_height );
+
+        current_mode_ = DrawMode::Texture2D;
+        requires_flush_ = true;
+    }
+    void texturedTriangle( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2, GLfloat x3, GLfloat y3,
+        GLfloat s1, GLfloat t1, GLfloat s2, GLfloat t2, GLfloat s3, GLfloat t3 )
+    {
+        if( current_mode_ != DrawMode::Texture2D ) flush();
+
+        push3( x1, y1, depth_ ); push4( red_, green_, blue_, alpha_ ); push2( s1, t1 );
+        push3( x2, y2, depth_ ); push4( red_, green_, blue_, alpha_ ); push2( s2, t2 );
+        push3( x3, y3, depth_ ); push4( red_, green_, blue_, alpha_ ); push2( s3, t3 );
 
         current_mode_ = DrawMode::Texture2D;
         requires_flush_ = true;

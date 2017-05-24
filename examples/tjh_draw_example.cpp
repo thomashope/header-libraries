@@ -83,7 +83,7 @@ int main()
         // Draw a bunch of points
         // Multisampling will make points less than perfect
         for( int i = 100; i < 200; i += 2 ) {
-            Draw::point( i, 100 );
+            Draw::point( i, 220 );
         }
 
         // Try a textured shape
@@ -91,7 +91,9 @@ int main()
         glBindTexture( GL_TEXTURE_2D, tex );
         Draw::texturedQuad( 20, 20, 100, 100 );
 
-        Draw::texturedQuad( 200, 20, 50, 50, 0.2, 0.2, 0.6, 0.6 );
+        Draw::texturedQuad( 250, 20, 50, 50, 0.2, 0.2, 0.6, 0.6 );
+
+        Draw::texturedTriangle( 200, 20, 240, 20, 200, 60, 0, 0, 1, 0, 0, 1 );
 
         // Try a 3D shape
 
