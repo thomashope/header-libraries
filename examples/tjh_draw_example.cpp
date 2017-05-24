@@ -1,9 +1,9 @@
 #define TJH_WINDOW_IMPLEMENTATION
 #include "../tjh_window.h"
-
 #define TJH_CAMERA_IMPLEMENTATION
 #include "../tjh_camera.h"
-
+#define STB_IMAGE_IMPLEMENTATION
+#include "../stb_image.h"
 #include <glm/gtc/type_ptr.hpp>
 
 // Define TJH_DRAW_IMPLEMENTATION in ONE .cpp file in your project
@@ -32,11 +32,11 @@ int main()
     glGenTextures( 1, &tex );
     glActiveTexture( GL_TEXTURE0 );
     glBindTexture( GL_TEXTURE_2D, tex );
-    float pixels[] = {
-        1.0f, 0.0f, 0.0f, 1.0f,   1.0f, 1.0f, 1.0f, 1.0f,
-        1.0f, 1.0f, 1.0f, 1.0f,   0.0f, 1.0f, 0.0f, 1.0f
-    };
-    glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, 2, 2, 0, GL_RGBA, GL_FLOAT, pixels ); 
+    int x,y,n;
+    unsigned char *pixels = stbi_load("sample.png", &x, &y, &n, 0);
+    stbi_image_free(pixels);
+
+    glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, x, y, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels ); 
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT );
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT );
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
@@ -90,6 +90,8 @@ int main()
         
         glBindTexture( GL_TEXTURE_2D, tex );
         Draw::texturedQuad( 20, 20, 100, 100 );
+
+        Draw::texturedQuad( 200, 20, 50, 50, 0.2, 0.2, 0.6, 0.6 );
 
         // Try a 3D shape
 

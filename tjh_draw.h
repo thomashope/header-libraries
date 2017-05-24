@@ -330,7 +330,14 @@ namespace TJH_DRAW_NAMESPACE
         }
 
         glBufferData(GL_ARRAY_BUFFER, sizeof(vertex_buffer_[0]) * vertex_buffer_.size(), vertex_buffer_.data(), GL_STREAM_DRAW);
-        glDrawArrays(GL_TRIANGLES, 0, vertex_buffer_.size());
+        if( current_mode_ == DrawMode::Colour2D || current_mode_ == DrawMode::Colour3D )
+        {
+            glDrawArrays( GL_TRIANGLES, 0, vertex_buffer_.size()/7 );
+        }
+        if( current_mode_ == DrawMode::Texture2D || current_mode_ == DrawMode::Texture3D )
+        {
+            glDrawArrays( GL_TRIANGLES, 0, vertex_buffer_.size()/9 );
+        }
 
         vertex_buffer_.clear();
         requires_flush_ = false;
