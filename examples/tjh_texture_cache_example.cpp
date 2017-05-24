@@ -54,7 +54,7 @@ int main(int argc, char const *argv[])
     shader.compileAndLink();
     shader.bind();
 
-    shader.setVertexAttribArrays({
+    shader.setVertexAttribArrays( vao, {
         {"position", 2, GL_FLOAT, GL_FALSE},
         {"color",    3, GL_FLOAT, GL_FALSE},
         {"texcoord", 2, GL_FLOAT, GL_FALSE},

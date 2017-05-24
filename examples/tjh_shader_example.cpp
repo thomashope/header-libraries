@@ -14,12 +14,15 @@ int main(int argc, char const *argv[])
 	GLuint vao = 0;
 
 	{
-		shader.loadVertexSourceFile( "examples/tjh_shader_example_vert.glsl" );
-		shader.loadGeometrySourceFile( "examples/tjh_shader_example_geo.glsl" );
-		shader.loadFragmentSourceFile( "examples/tjh_shader_example_frag.glsl" );
+		shader.loadVertexSourceFile( "tjh_shader_example_vert.glsl" );
+		shader.loadGeometrySourceFile( "tjh_shader_example_geo.glsl" );
+		shader.loadFragmentSourceFile( "tjh_shader_example_frag.glsl" );
 		if( !shader.compileAndLink() )
         {
             printf("oh no! Error creating shader!\n" );
+            shader.shutdown();
+            Window::shutdown();
+            return -1;
         }
 
 		glGenVertexArrays( 1, &vao );
@@ -36,7 +39,7 @@ int main(int argc, char const *argv[])
         };
         glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STATIC_DRAW);
 
-        shader.setVertexAttribArrays({
+        shader.setVertexAttribArrays( vao, {
             {"pos", 3, GL_FLOAT, GL_FALSE},
             {"col", 3, GL_FLOAT, GL_FALSE} });
 	}
@@ -71,6 +74,7 @@ int main(int argc, char const *argv[])
 		Window::present();
 	}
 
+    shader.shutdown();
 	Window::shutdown();
 	return 0;
 }

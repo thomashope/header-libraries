@@ -129,9 +129,11 @@ public:
         GLboolean normalized;
     };
 
+    // NOTE: preliminary reading suggest this is bound to the VAO, not the shader.
+    // If so this would have to be called for each shader bound, how could I indicate this?
     // Saves calling a whole heap of gl functions, use it like so:
     // shader.setVertexAttribArray({ {"pos", 3, GL_FLOAT, GL_FALSE}, {"col", 3, GL_FLOAT, GL_FALSE} });
-    bool setVertexAttribArrays( const std::initializer_list<VertexAttribArrayDesc>& desc_list );
+    bool setVertexAttribArrays( GLuint vao, const std::initializer_list<VertexAttribArrayDesc>& desc_list );
 
     // Returns true if the source files were loaded successfully
     // false if they could not be loaded
@@ -450,7 +452,7 @@ GLint TJH_SHADER_TYPENAME::getAttribLocation( const GLchar* name ) const
     return attribute;
 }
 
-bool TJH_SHADER_TYPENAME::setVertexAttribArrays( const std::initializer_list<VertexAttribArrayDesc>& desc_list )
+bool TJH_SHADER_TYPENAME::setVertexAttribArrays( GLuint vao, const std::initializer_list<VertexAttribArrayDesc>& desc_list )
 {
     bool success = true;
     std::vector<long unsigned> offset_list;
@@ -462,6 +464,9 @@ bool TJH_SHADER_TYPENAME::setVertexAttribArrays( const std::initializer_list<Ver
         stride += size * desc.count;
         offset_list.push_back( stride - size * desc.count );
     }
+    
+    // Bind the vao so we know we are working with the right one
+    glBindVertexArray( vao );
 
     // Manual loop counter because initalizer lists like ranged for loops
     // but we also want and index for the vector
