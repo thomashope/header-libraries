@@ -22,11 +22,26 @@ Camera camera;
 
 void update_camera( float dt );
 
-int main(int argc, char const *argv[])
+int main()
 {
 	Window::init( "Window Title!", WIDTH, HEIGHT );
 
 	Draw::init( 320, 240 );
+
+    GLuint tex;
+    glGenTextures( 1, &tex );
+    glActiveTexture( GL_TEXTURE0 );
+    glBindTexture( GL_TEXTURE_2D, tex );
+    float pixels[] = {
+        1.0f, 0.0f, 0.0f, 1.0f,   1.0f, 1.0f, 1.0f, 1.0f,
+        1.0f, 1.0f, 1.0f, 1.0f,   0.0f, 1.0f, 0.0f, 1.0f
+    };
+    glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, 2, 2, 0, GL_RGBA, GL_FLOAT, pixels ); 
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
+    glGenerateMipmap( GL_TEXTURE_2D );
 
 	bool running = true;
 	while( running )
@@ -71,6 +86,10 @@ int main(int argc, char const *argv[])
             Draw::point( i, 100 );
         }
 
+        // Try a textured shape
+        
+        glBindTexture( GL_TEXTURE_2D, tex );
+        Draw::texturedQuad( 20, 20, 100, 100 );
 
         // Try a 3D shape
 

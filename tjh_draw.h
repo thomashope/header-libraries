@@ -78,6 +78,7 @@
 //  - 3d textured quad
 //  - 3d circle from point, line, radius
 //  - 3d sphere
+//  - 3d cylinder
 
 ////// HEADER //////////////////////////////////////////////////////////////////
 
@@ -114,6 +115,10 @@ namespace TJH_DRAW_NAMESPACE
         GLfloat x3, GLfloat y3, GLfloat z3,
         GLfloat x4, GLfloat y4, GLfloat z4 );
 
+    void texturedQuad( GLfloat x, GLfloat y, GLfloat width, GLfloat height );
+    void texturedQuad( GLfloat x, GLfloat y, GLfloat width, GLfloat height,
+        GLfloat s, GLfloat t, GLfloat s_width, GLfloat t_height );
+
     extern const float PI;
 }
 
@@ -134,13 +139,13 @@ namespace TJH_DRAW_NAMESPACE
     enum class DrawMode { Colour2D, Texture2D, Colour3D, Texture3D };
     DrawMode current_mode_  = DrawMode::Colour2D;
 
-    GLuint colour_3d_program_   = 0;
-    GLuint texture_3d_program_  = 0; // TODO: implement
+    GLuint colour_program_   = 0;
+    GLuint texture_program_  = 0; // TODO: implement
 
-    GLuint colour_3d_vao_   = 0;
-    GLuint colour_3d_vbo_   = 0;
-    GLuint texture_3d_vao_  = 0;
-    GLuint texture_3d_vbo_  = 0;
+    GLuint colour_vao_   = 0;
+    GLuint colour_vbo_   = 0;
+    GLuint texture_vao_  = 0;
+    GLuint texture_vbo_  = 0;
 
     float red_              = 1.0f;
     float green_            = 1.0f;
@@ -157,6 +162,7 @@ namespace TJH_DRAW_NAMESPACE
 
     GLfloat mvp_matrix_[16]         = { 0.0f };
     std::vector<GLfloat> vertex_buffer_;
+    bool requires_flush_            = false;
 
     // 'PRIVATE' MEMBER FUNCTIONS
     void push2( GLfloat one, GLfloat two );
@@ -172,9 +178,6 @@ namespace TJH_DRAW_NAMESPACE
 
     void init( GLfloat width, GLfloat height )
     {
-
-        // setup colour 3d shader
-        
         const char* colour_3d_vert_src =
             R"(#version 150 core
             uniform mat4 mvp;
@@ -195,26 +198,77 @@ namespace TJH_DRAW_NAMESPACE
                 outColour = fCol;
             })";
 
-        colour_3d_program_ = create_program(
+        colour_program_ = create_program(
             create_shader( GL_VERTEX_SHADER, colour_3d_vert_src ),
             create_shader( GL_FRAGMENT_SHADER, colour_3d_frag_src ) );
 
-        colour_3d_mvp_uniform_ = glGetUniformLocation( colour_3d_program_, "mvp" );
+        colour_3d_mvp_uniform_ = glGetUniformLocation( colour_program_, "mvp" );
 
-        glGenVertexArrays( 1, &colour_3d_vao_ );
-        glBindVertexArray( colour_3d_vao_ );
-        glGenBuffers( 1, &colour_3d_vbo_ );
-        glBindBuffer( GL_ARRAY_BUFFER, colour_3d_vbo_ );
+        glGenVertexArrays( 1, &colour_vao_ );
+        glBindVertexArray( colour_vao_ );
+        glGenBuffers( 1, &colour_vbo_ );
+        glBindBuffer( GL_ARRAY_BUFFER, colour_vbo_ );
 
-        GLint posAtrib = glGetAttribLocation(colour_3d_program_, "vPos");
+        GLint posAtrib = glGetAttribLocation(colour_program_, "vPos");
         if( posAtrib == -1 ) { TJH_DRAW_PRINTF("ERROR: position attribute not found in shader\n"); }
         glEnableVertexAttribArray( posAtrib );
         glVertexAttribPointer( posAtrib, 3, GL_FLOAT, GL_FALSE, 7*sizeof(GLfloat), 0 );
 
-        GLint colAtrib = glGetAttribLocation(colour_3d_program_, "vCol");
+        GLint colAtrib = glGetAttribLocation(colour_program_, "vCol");
         if( colAtrib == -1 ) { TJH_DRAW_PRINTF("ERROR: Colour attribute not found in shader\n"); }
         glEnableVertexAttribArray( colAtrib );
         glVertexAttribPointer( colAtrib, 4, GL_FLOAT, GL_FALSE, 7*sizeof(GLfloat), (void*)(3*sizeof(float)) );
+
+        const char* texture_3d_vert_src =
+            R"(#version 150 core
+            uniform mat4 mvp;
+            in vec3 vPos;
+            in vec4 vCol;
+            in vec2 vTex;
+            out vec4 fCol;
+            out vec2 fTex;
+            void main()
+            {
+               fCol = vCol;
+               fTex = vTex;
+               gl_Position = mvp * vec4(vPos, 1.0);
+            })";
+        const char* texture_3d_frag_src =
+            R"(#version 150 core
+            uniform sampler2D tex;
+            in vec4 fCol;
+            in vec2 fTex;
+            out vec4 outColour;
+            void main()
+            {
+                outColour = fCol * texture(tex, fTex);
+            })";
+
+        texture_program_ = create_program(
+            create_shader( GL_VERTEX_SHADER, texture_3d_vert_src ),
+            create_shader( GL_FRAGMENT_SHADER, texture_3d_frag_src ) );
+
+        texture_3d_mvp_uniform_ = glGetUniformLocation( texture_program_, "mvp" );
+
+        glGenVertexArrays( 1, &texture_vao_ );
+        glBindVertexArray( texture_vao_ );
+        glGenBuffers( 1, &texture_vbo_ );
+        glBindBuffer( GL_ARRAY_BUFFER, texture_vbo_ );
+
+        posAtrib = glGetAttribLocation( texture_program_, "vPos" );
+        if( posAtrib == -1 ) { TJH_DRAW_PRINTF("ERROR: Position attribute not found in shader\n"); }
+        glEnableVertexAttribArray( posAtrib );
+        glVertexAttribPointer( posAtrib, 3, GL_FLOAT, GL_FALSE, 9*sizeof(GLfloat), 0 );
+
+        colAtrib = glGetAttribLocation( texture_program_, "vCol" );
+        if( colAtrib == -1 ) { TJH_DRAW_PRINTF("ERROR: Colour attribute not found in shader\n"); }
+        glEnableVertexAttribArray( colAtrib );
+        glVertexAttribPointer( colAtrib, 4, GL_FLOAT, GL_FALSE, 9*sizeof(GLfloat), (void*)(3*sizeof(float)) );
+
+        GLint texAtrib = glGetAttribLocation( texture_program_, "vTex" );
+        if( texAtrib == -1 ) { TJH_DRAW_PRINTF("ERROR: Texture attribute not found in shader\n"); }
+        glEnableVertexAttribArray( texAtrib );
+        glVertexAttribPointer( texAtrib, 2, GL_FLOAT, GL_FALSE, 9*sizeof(GLfloat), (void*)(7*sizeof(float)) );
 
         setScale( width, height );
 
@@ -230,42 +284,44 @@ namespace TJH_DRAW_NAMESPACE
     void shutdown()
     {
     #define DELETE_AND_ZERO_RESOURCE( res, delete_func ) if(res){delete_func(1,&res);res=0;}
-        DELETE_AND_ZERO_RESOURCE( colour_3d_vao_, glDeleteVertexArrays );
-        DELETE_AND_ZERO_RESOURCE( texture_3d_vao_, glDeleteVertexArrays );
-        DELETE_AND_ZERO_RESOURCE( colour_3d_vbo_, glDeleteBuffers );
-        DELETE_AND_ZERO_RESOURCE( texture_3d_vbo_, glDeleteBuffers );
+        DELETE_AND_ZERO_RESOURCE( colour_vao_, glDeleteVertexArrays );
+        DELETE_AND_ZERO_RESOURCE( texture_vao_, glDeleteVertexArrays );
+        DELETE_AND_ZERO_RESOURCE( colour_vbo_, glDeleteBuffers );
+        DELETE_AND_ZERO_RESOURCE( texture_vbo_, glDeleteBuffers );
     #undef DELETE_AND_ZERO_RESOURCE
 
-        delete_and_zero_program( colour_3d_program_ );
-        delete_and_zero_program( texture_3d_program_ );
+        delete_and_zero_program( colour_program_ );
+        delete_and_zero_program( texture_program_ );
     }
 
     void flush()
     {
+        if( !requires_flush_ ) return;
+
         switch( current_mode_ )
         {
         case DrawMode::Colour2D:
-            glUseProgram( colour_3d_program_ );
-            glBindVertexArray( colour_3d_vao_ );
-            glBindBuffer( GL_ARRAY_BUFFER, colour_3d_vbo_ );
+            glUseProgram( colour_program_ );
+            glBindVertexArray( colour_vao_ );
+            glBindBuffer( GL_ARRAY_BUFFER, colour_vbo_ );
             send_ortho_matrix();
         break;
         case DrawMode::Texture2D:
-            glUseProgram( texture_3d_program_ );
-            glBindVertexArray( texture_3d_vao_ );
-            glBindBuffer( GL_ARRAY_BUFFER, texture_3d_vbo_ );
+            glUseProgram( texture_program_ );
+            glBindVertexArray( texture_vao_ );
+            glBindBuffer( GL_ARRAY_BUFFER, texture_vbo_ );
             send_ortho_matrix();
         break;
         case DrawMode::Colour3D:
-            glUseProgram( colour_3d_program_ );
-            glBindVertexArray( colour_3d_vao_ );
-            glBindBuffer( GL_ARRAY_BUFFER, colour_3d_vbo_ );
+            glUseProgram( colour_program_ );
+            glBindVertexArray( colour_vao_ );
+            glBindBuffer( GL_ARRAY_BUFFER, colour_vbo_ );
             send_mvp_matrix();
         break;
         case DrawMode::Texture3D:
-            glUseProgram( texture_3d_program_ );
-            glBindVertexArray( texture_3d_vao_ );
-            glBindBuffer( GL_ARRAY_BUFFER, texture_3d_vbo_ );
+            glUseProgram( texture_program_ );
+            glBindVertexArray( texture_vao_ );
+            glBindBuffer( GL_ARRAY_BUFFER, texture_vbo_ );
             send_mvp_matrix();
         break;
         default:
@@ -277,6 +333,7 @@ namespace TJH_DRAW_NAMESPACE
         glDrawArrays(GL_TRIANGLES, 0, vertex_buffer_.size());
 
         vertex_buffer_.clear();
+        requires_flush_ = false;
     }
 
     // STATE ///////////////////////////////////////////////////////////////////
@@ -295,11 +352,15 @@ namespace TJH_DRAW_NAMESPACE
     }
     void setScale( GLfloat width, GLfloat height )
     {
-        width_ = width; height_ = height;
+        width_ = width;
+        height_ = height;
     }
     void setScale( GLfloat x_offset, GLfloat y_offset, GLfloat width, GLfloat height )
     {
-        x_offset_ = x_offset; y_offset_ = y_offset; width_ = width; height_ = height;
+        x_offset_ = x_offset;
+        y_offset_ = y_offset;
+        height_ = height;
+        width_ = width;
     }
     void setDepth( GLfloat depth )
     {
@@ -323,6 +384,7 @@ namespace TJH_DRAW_NAMESPACE
         quad( x, y, 1, 1 );
 
         current_mode_ = DrawMode::Colour2D;
+        requires_flush_ = true;
     }
 //    void line( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2 )
 //    {
@@ -351,6 +413,7 @@ namespace TJH_DRAW_NAMESPACE
         push3( x1, y1 + height, depth_ );           push4( red_, green_, blue_, alpha_ );
 
         current_mode_ = DrawMode::Colour2D;
+        requires_flush_ = true;
     }
     void triangle( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2, GLfloat x3, GLfloat y3 )
     {
@@ -361,6 +424,7 @@ namespace TJH_DRAW_NAMESPACE
         push3( x3, y3, depth_ ); push4( red_, green_, blue_, alpha_ );
 
         current_mode_ = DrawMode::Colour2D;
+        requires_flush_ = true;
     }
     void circle( GLfloat x, GLfloat y, GLfloat radius, int segments )
     {
@@ -373,10 +437,49 @@ namespace TJH_DRAW_NAMESPACE
             float b1 = y + std::cos(fraction*i) * radius;
             float a2 = x + std::sin(fraction*(i+1)) * radius;
             float b2 = y + std::cos(fraction*(i+1)) * radius;
-            triangle( x, y, a1, b1, a2, b2 ); 
+            push3(  x,  y, depth_ ); push4( red_, green_, blue_, alpha_ );
+            push3( a1, b1, depth_ ); push4( red_, green_, blue_, alpha_ );
+            push3( a2, b2, depth_ ); push4( red_, green_, blue_, alpha_ );
         }
 
         current_mode_ = DrawMode::Colour2D;
+        requires_flush_ = true;
+    }
+
+    //
+    // Textured 2D primatives
+    //
+
+    void texturedQuad( GLfloat x, GLfloat y, GLfloat width, GLfloat height )
+    {
+        if( current_mode_ != DrawMode::Texture2D ) flush();
+
+        push3( x, y, depth_ );                  push4( red_, green_, blue_, alpha_ ); push2( 0, 0 );
+        push3( x + width, y, depth_ );          push4( red_, green_, blue_, alpha_ ); push2( 1, 0 );
+        push3( x + width, y + height, depth_ ); push4( red_, green_, blue_, alpha_ ); push2( 1, 1 );
+
+        push3( x, y, depth_ );                  push4( red_, green_, blue_, alpha_ ); push2( 0, 0 );
+        push3( x + width, y + height, depth_ ); push4( red_, green_, blue_, alpha_ ); push2( 1, 1 );
+        push3( x, y + height, depth_ );         push4( red_, green_, blue_, alpha_ ); push2( 0, 1 );
+
+        current_mode_ = DrawMode::Texture2D;
+        requires_flush_ = true;
+    }
+    void texturedQuad( GLfloat x, GLfloat y, GLfloat width, GLfloat height,
+        GLfloat s, GLfloat t, GLfloat s_width, GLfloat t_height )
+    {
+        if( current_mode_ != DrawMode::Texture2D ) flush();
+
+        push3( x, y, depth_ );                  push4( red_, green_, blue_, alpha_ ); push2( s, t );
+        push3( x + width, y, depth_ );          push4( red_, green_, blue_, alpha_ ); push2( s + s_width, t );
+        push3( x + width, y + height, depth_ ); push4( red_, green_, blue_, alpha_ ); push2( s + s_width, t + t_height );
+
+        push3( x, y, depth_ );                  push4( red_, green_, blue_, alpha_ ); push2( s, t );
+        push3( x + width, y + height, depth_ ); push4( red_, green_, blue_, alpha_ ); push2( s + s_width, t + t_height );
+        push3( x, y + height, depth_ );         push4( red_, green_, blue_, alpha_ ); push2( s, t + t_height );
+
+        current_mode_ = DrawMode::Texture2D;
+        requires_flush_ = true;
     }
 
     //
@@ -394,6 +497,7 @@ namespace TJH_DRAW_NAMESPACE
         push3( x3, y3, z3 ); push4( red_, green_, blue_, alpha_ );
 
         current_mode_ = DrawMode::Colour3D;
+        requires_flush_ = true;
     }
     void quad( GLfloat x1, GLfloat y1, GLfloat z1,
         GLfloat x2, GLfloat y2, GLfloat z2,
@@ -410,6 +514,7 @@ namespace TJH_DRAW_NAMESPACE
         push3( x4, y4, z4 ); push4( red_, green_, blue_, alpha_ );
 
         current_mode_ = DrawMode::Colour3D;
+        requires_flush_ = true;
     }
 
     // UTILS //////////////////////////////////////////////////////////////////
@@ -490,10 +595,12 @@ namespace TJH_DRAW_NAMESPACE
             xo, yo,  0,  1
         };
         glUniformMatrix4fv( colour_3d_mvp_uniform_, 1, GL_FALSE, proj );
+        glUniformMatrix4fv( texture_3d_mvp_uniform_, 1, GL_FALSE, proj );
     }
     void send_mvp_matrix()
     {
         glUniformMatrix4fv( colour_3d_mvp_uniform_, 1, GL_FALSE, mvp_matrix_ );
+        glUniformMatrix4fv( texture_3d_mvp_uniform_, 1, GL_FALSE, mvp_matrix_ );
     }
 }
 // Prevent the implementation from leaking into subsequent includes
