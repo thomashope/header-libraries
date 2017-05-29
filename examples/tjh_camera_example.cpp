@@ -69,7 +69,7 @@ int main()
 
     glBufferData( GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STATIC_DRAW );
 
-    shader.setVertexAttribArrays({
+    shader.setVertexAttribArrays( vao, {
         {"pos", 3, GL_FLOAT, GL_FALSE},
         {"col", 3, GL_FLOAT, GL_FALSE}
     });

@@ -29,8 +29,8 @@ Much love, Tom
 
 ## TODO
 
+- Improve test coverage!! Currently non-existant!
 - write a breif description of each library
-- try out Travic CI for automated testing with catch.hpp
 - write tjh_camera.h example
 - tjh_audio.h
     - OpenAL integration

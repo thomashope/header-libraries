@@ -72,8 +72,6 @@
 //      - i implemented something along those lines but i don't know if it actually works
 //  - solid shapes have a line draw mode
 //      - when drawing shapes in line mode, lines expand inwards to preserve specified size
-//  - 2d textured triangle
-//  - 2d textured quad
 //  - 3d quad from point, normal, width, height
 //  - 3d textured quad
 //  - 3d circle from point, line, radius
