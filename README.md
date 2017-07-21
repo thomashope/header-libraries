@@ -48,3 +48,5 @@ Much love, Tom
     - can also draw static strings
     - allows messages to be updated after being pushed
     - what do other loggers do... message levels, colours
+- tjh_math.h
+    - merge in file, bring up to standard

@@ -24,7 +24,7 @@ void update_camera( float dt );
 
 int main()
 {
-	Window::init( "Window Title!", WIDTH, HEIGHT );
+	Window::init( __FILE__, WIDTH, HEIGHT );
 
 	Draw::init( 320, 240 );
 
@@ -34,9 +34,9 @@ int main()
     glBindTexture( GL_TEXTURE_2D, tex );
     int x,y,n;
     unsigned char *pixels = stbi_load("sample.png", &x, &y, &n, 0);
+    glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, x, y, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels ); 
     stbi_image_free(pixels);
 
-    glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, x, y, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels ); 
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT );
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT );
     glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
@@ -70,7 +70,7 @@ int main()
 
 		Draw::clear( 0, 0, 0 );
 
-        // Give us some corners so we know whats going down
+        // Draw some coloured squares in the corners
         Draw::setColor( 0, 0, 1 );
         Draw::quad( 0, 0, 8, 8 );
         Draw::setColor( 1, 0, 1 );

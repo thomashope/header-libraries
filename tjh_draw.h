@@ -60,10 +60,16 @@
 // You can modify the following #defines to enable or disable additional library
 // features.
 //
+
 // Change this to customise the namespace for this library
+#ifndef TJH_DRAW_NAMESPACE
 #define TJH_DRAW_NAMESPACE Draw
+#endif
+
 // Change this to use a custom printf like function for your platform, for example SDL_Log
+#ifndef TJH_DRAW_PRINTF
 #define TJH_DRAW_PRINTF printf
+#endif
 
 ////// TODO ////////////////////////////////////////////////////////////////////
 //
@@ -84,7 +90,7 @@ namespace TJH_DRAW_NAMESPACE
 {
     // LIBRARY FUNCTIONS ///////////////////////////////////////////////////////
     
-    void init();        // TODO: return and error flag or something?
+    void init( GLfloat width, GLfloat height ); // TODO: return and error flag or something?
     void shutdown();
     void flush();
 

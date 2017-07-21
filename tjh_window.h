@@ -92,9 +92,14 @@
 #define TJH_WINDOW_GLEW_H_LOCATION <GL/glew.h>
 
 // Change this to customise the namespace for this library
+#ifndef TJH_WINDOW_NAMESPACE
 #define TJH_WINDOW_NAMESPACE Window
+#endif
+
 // Change this to use a custom printf like function for your platform, for example SDL_Log
+#ifndef TJH_WINDOW_PRINTF
 #define TJH_WINDOW_PRINTF printf
+#endif
 
 ////// TODO ////////////////////////////////////////////////////////////////////
 //
