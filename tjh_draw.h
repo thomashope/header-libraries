@@ -74,7 +74,9 @@
 ////// TODO ////////////////////////////////////////////////////////////////////
 //
 //  - convert line() to use triangles, optional settable width
-//  - test setScale x_offset and y_offset
+//  - can i remove the requires_flush_ variable and just check the vertex buffer is not empty?
+//  - make it possible to pass a pointer to a custom ortho matrix
+//  - test setOrthoMatrix x_offset and y_offset
 //      - i implemented something along those lines but i don't know if it actually works
 //  - solid shapes have a line draw mode
 //      - when drawing shapes in line mode, lines expand inwards to preserve specified size
@@ -99,14 +101,16 @@ namespace TJH_DRAW_NAMESPACE
     void clear( GLfloat r, GLfloat g, GLfloat b, GLfloat a = 1.0f );
     void setColor( GLfloat r, GLfloat g, GLfloat b, GLfloat a = 1.0f );
     void setDepth( GLfloat depth );
-    void setScale( GLfloat width, GLfloat height );
-    void setScale( GLfloat x_offset, GLfloat y_offset, GLfloat width, GLfloat height );
+    void setLineWidth( GLfloat width );
+    void setOrthoMatrix( GLfloat width, GLfloat height );
+    void setOrthoMatrix( GLfloat x_offset, GLfloat y_offset, GLfloat width, GLfloat height );
+    // void setOrthoMatrix( GLfloat* matrix );
     void setMVPMatrix( GLfloat* matrix );
 
     // PRIMATIVES //////////////////////////////////////////////////////////////
 
     void point( GLfloat x, GLfloat y );
-//    void line( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2 );
+    void line( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2 );
     void quad( GLfloat x, GLfloat y, GLfloat width, GLfloat height );
     void triangle( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2, GLfloat x3, GLfloat y3 );
     void circle( GLfloat x, GLfloat y, GLfloat radius, int segments = 16 );
@@ -157,6 +161,7 @@ namespace TJH_DRAW_NAMESPACE
     float green_            = 1.0f;
     float blue_             = 1.0f;
     float alpha_            = 1.0f;
+    float line_width_       = 1.0f;
 
     GLint colour_3d_mvp_uniform_    = 0;
     GLint texture_3d_mvp_uniform_   = 0;
@@ -167,6 +172,7 @@ namespace TJH_DRAW_NAMESPACE
     float y_offset_                 = 0.0f;
 
     GLfloat mvp_matrix_[16]         = { 0.0f };
+    GLfloat ortho_matrix_[16]       = { 0.0f };
     std::vector<GLfloat> vertex_buffer_;
     bool requires_flush_            = false;
 
@@ -276,7 +282,7 @@ namespace TJH_DRAW_NAMESPACE
         glEnableVertexAttribArray( texAtrib );
         glVertexAttribPointer( texAtrib, 2, GL_FLOAT, GL_FALSE, 9*sizeof(GLfloat), (void*)(7*sizeof(float)) );
 
-        setScale( width, height );
+        setOrthoMatrix( width, height );
 
         // Unbind  our state so we don't completely confuse the next person
 
@@ -356,19 +362,23 @@ namespace TJH_DRAW_NAMESPACE
         glClearColor( r, g, b, a );
         glClear( GL_COLOR_BUFFER_BIT );
     }
-    void setColor(GLfloat r, GLfloat g, GLfloat b, GLfloat a )
+    void setColor( GLfloat r, GLfloat g, GLfloat b, GLfloat a )
     {
         red_    = r;
         green_  = g;
         blue_   = b;
         alpha_  = a;
     }
-    void setScale( GLfloat width, GLfloat height )
+    void setLineWidth( GLfloat width )
+    {
+        line_width_ = width;
+    }
+    void setOrthoMatrix( GLfloat width, GLfloat height )
     {
         width_ = width;
         height_ = height;
     }
-    void setScale( GLfloat x_offset, GLfloat y_offset, GLfloat width, GLfloat height )
+    void setOrthoMatrix( GLfloat x_offset, GLfloat y_offset, GLfloat width, GLfloat height )
     {
         x_offset_ = x_offset;
         y_offset_ = y_offset;
@@ -399,20 +409,34 @@ namespace TJH_DRAW_NAMESPACE
         current_mode_ = DrawMode::Colour2D;
         requires_flush_ = true;
     }
-//    void line( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2 )
-//    {
-//        if( current_mode_ != DrawMode::Colour2D ) flush();
-        // TODO: reimplement
-//        glBindVertexArray(vao_);
-//        glBindBuffer(GL_ARRAY_BUFFER, vbo_);
-//
-//        GLfloat verts[] = {
-//            x1, y1, x2, y2
-//        };
-//
-//        glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_STREAM_DRAW);
-//        glDrawArrays(GL_LINES, 0, 2);
-//    }
+    void line( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2 )
+    {
+        if( current_mode_ != DrawMode::Colour2D ) flush();
+
+        // TODO: this can obviously be crompressed quite a bit
+
+        GLfloat x12 = x2 - x1;
+        GLfloat y12 = y2 - y1;
+        GLfloat length = std::sqrt(x12 * x12 + y12 * y12);
+
+        GLfloat cos90 = 0;
+        GLfloat sin90 = 1;
+        GLfloat xperp = x12 * cos90 - y12 * sin90;
+        GLfloat yperp = x12 * sin90 + y12 * cos90;
+
+        xperp /= length;
+        yperp /= length;
+        xperp *= line_width_;
+        yperp *= line_width_;
+
+        x1 -= xperp * 0.5f;
+        y1 -= yperp * 0.5f;
+        triangle( x1        , y1        , x1 + x12, y1 + y12, x1 + xperp      , y1 + yperp );
+        triangle( x1 + xperp, y1 + yperp, x1 + x12, y1 + y12, x1 + x12 + xperp, y1 + y12 + yperp );
+
+        current_mode_ = DrawMode::Colour2D;
+        requires_flush_ = true;
+    }
     void quad( GLfloat x1, GLfloat y1, GLfloat width, GLfloat height )
     {
         if( current_mode_ != DrawMode::Colour2D ) flush();
@@ -467,13 +491,13 @@ namespace TJH_DRAW_NAMESPACE
     {
         if( current_mode_ != DrawMode::Texture2D ) flush();
 
-        push3( x, y, depth_ );                  push4( red_, green_, blue_, alpha_ ); push2( 0, 0 );
-        push3( x + width, y, depth_ );          push4( red_, green_, blue_, alpha_ ); push2( 1, 0 );
-        push3( x + width, y + height, depth_ ); push4( red_, green_, blue_, alpha_ ); push2( 1, 1 );
+        push3( x, y, depth_ );                  push4( red_, green_, blue_, alpha_ ); push2( 0, 1 );
+        push3( x + width, y, depth_ );          push4( red_, green_, blue_, alpha_ ); push2( 1, 1 );
+        push3( x + width, y + height, depth_ ); push4( red_, green_, blue_, alpha_ ); push2( 1, 0 );
 
-        push3( x, y, depth_ );                  push4( red_, green_, blue_, alpha_ ); push2( 0, 0 );
-        push3( x + width, y + height, depth_ ); push4( red_, green_, blue_, alpha_ ); push2( 1, 1 );
-        push3( x, y + height, depth_ );         push4( red_, green_, blue_, alpha_ ); push2( 0, 1 );
+        push3( x, y, depth_ );                  push4( red_, green_, blue_, alpha_ ); push2( 0, 1 );
+        push3( x + width, y + height, depth_ ); push4( red_, green_, blue_, alpha_ ); push2( 1, 0 );
+        push3( x, y + height, depth_ );         push4( red_, green_, blue_, alpha_ ); push2( 0, 0 );
 
         current_mode_ = DrawMode::Texture2D;
         requires_flush_ = true;
@@ -483,13 +507,13 @@ namespace TJH_DRAW_NAMESPACE
     {
         if( current_mode_ != DrawMode::Texture2D ) flush();
 
-        push3( x, y, depth_ );                  push4( red_, green_, blue_, alpha_ ); push2( s, t );
-        push3( x + width, y, depth_ );          push4( red_, green_, blue_, alpha_ ); push2( s + s_width, t );
-        push3( x + width, y + height, depth_ ); push4( red_, green_, blue_, alpha_ ); push2( s + s_width, t + t_height );
+        push3( x, y, depth_ );                  push4( red_, green_, blue_, alpha_ ); push2( s, t + t_height );
+        push3( x + width, y, depth_ );          push4( red_, green_, blue_, alpha_ ); push2( s + s_width, t + t_height );
+        push3( x + width, y + height, depth_ ); push4( red_, green_, blue_, alpha_ ); push2( s + s_width, t );
 
-        push3( x, y, depth_ );                  push4( red_, green_, blue_, alpha_ ); push2( s, t );
-        push3( x + width, y + height, depth_ ); push4( red_, green_, blue_, alpha_ ); push2( s + s_width, t + t_height );
-        push3( x, y + height, depth_ );         push4( red_, green_, blue_, alpha_ ); push2( s, t + t_height );
+        push3( x, y, depth_ );                  push4( red_, green_, blue_, alpha_ ); push2( s, t + t_height );
+        push3( x + width, y + height, depth_ ); push4( red_, green_, blue_, alpha_ ); push2( s + s_width, t );
+        push3( x, y + height, depth_ );         push4( red_, green_, blue_, alpha_ ); push2( s, t );
 
         current_mode_ = DrawMode::Texture2D;
         requires_flush_ = true;
@@ -613,14 +637,23 @@ namespace TJH_DRAW_NAMESPACE
         GLfloat ys = -2.0f / height_;    // y scale
         GLfloat xo = -1.0f - x_offset_ / width_; // x offset
         GLfloat yo =  1.0f - y_offset_ / height_; // y offset
+        /*
         GLfloat proj[16] = {
             xs,  0,  0,  0,
              0, ys,  0,  0,
              0,  0,  1,  0,
             xo, yo,  0,  1
-        };
-        glUniformMatrix4fv( colour_3d_mvp_uniform_, 1, GL_FALSE, proj );
-        glUniformMatrix4fv( texture_3d_mvp_uniform_, 1, GL_FALSE, proj );
+        };*/
+        
+        ortho_matrix_[0] = xs;
+        ortho_matrix_[5] = ys;
+        ortho_matrix_[10] = 1;
+        ortho_matrix_[15] = 1;
+        ortho_matrix_[12] = xo;
+        ortho_matrix_[13] = yo;
+
+        glUniformMatrix4fv( colour_3d_mvp_uniform_, 1, GL_FALSE, ortho_matrix_ );
+        glUniformMatrix4fv( texture_3d_mvp_uniform_, 1, GL_FALSE, ortho_matrix_ );
     }
     void send_mvp_matrix()
     {
