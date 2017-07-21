@@ -15,7 +15,7 @@ const int FRAMEBUFFER_WIDTH = 800;	// TODO: set these differently and make sure 
 const int FRAMEBUFFER_HEIGHT = 600;
 bool done = false;
 
-GLuint createFramebuffer( GLuint &framebuffer, GLuint &texture );
+void createFramebuffer( GLuint &framebuffer, GLuint &texture );
 
 int main()
 {
@@ -37,11 +37,22 @@ int main()
 
 		glBindFramebuffer( GL_FRAMEBUFFER, framebuffer );
 
-		// Do our drawing
+		// Do our drawing to the framebuffer
 
 		draw::clear( 0, 0.5, 0.5 );
+
 		draw::setColor( 1, 1, 1 );
-		draw::quad( 100, 100, 50, 50 );
+		draw::quad( 0, 0, 50, 50 );
+
+		draw::setColor( 1, 0, 0 );
+		draw::quad( WIDTH, 0, -50, 50 );
+
+		draw::setColor( 0, 1, 0 );
+		draw::quad( 0, HEIGHT, 50, -50 );
+
+		draw::setColor( 0, 0, 1 );
+		draw::quad( WIDTH, HEIGHT, -50, -50 );
+
 		draw::flush();
 
 		// Now bind to the default framebuffer (the window)
@@ -52,9 +63,24 @@ int main()
 
 		glBindTexture( GL_TEXTURE_2D, texture );
 		
-		draw::clear( 0, 0, 0 );
-		draw::texturedQuad( 0, 0, WIDTH, HEIGHT );
+		draw::clear( 0.1, 0.1, 0.1 );
+		draw::setColor( 1, 1, 1 );
+		for( int i = 5; i < WIDTH; i += 10 )
+		{
+			draw::point( i, 10 );
+			draw::point( i, HEIGHT - 10 );
+		}
+		draw::texturedQuad( 10, 10, WIDTH/5.0f, HEIGHT/5.0f );
+
+		draw::setLineWidth( 2 );
+		draw::setColor( 1, 0, 0 );
+		draw::line( WIDTH/2, HEIGHT/2, WIDTH/2 + 50, HEIGHT/2 - 50 );
+		draw::setColor( 0, 1, 0 );
+		draw::line( WIDTH/2, HEIGHT/2, WIDTH/2 - 50, HEIGHT/2 + 50 );
+
 		draw::flush();
+		
+		glBindTexture( GL_TEXTURE_2D, 0 );
 
 		window::present();
 	}
@@ -72,7 +98,7 @@ int main()
 	return 0;
 }
 
-GLuint createFramebuffer( GLuint &framebuffer, GLuint &texture )
+void createFramebuffer( GLuint &framebuffer, GLuint &texture )
 {
 	// Create a texture and fill with data
 	
@@ -80,8 +106,8 @@ GLuint createFramebuffer( GLuint &framebuffer, GLuint &texture )
 	glBindTexture( GL_TEXTURE_2D, texture );
 	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR );
 	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR );
-	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT );
-	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT );
+	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE );
+	glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE );
     glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, FRAMEBUFFER_WIDTH, FRAMEBUFFER_HEIGHT, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL ); 
 	glBindTexture( GL_TEXTURE_2D, 0 );
 
@@ -108,5 +134,4 @@ GLuint createFramebuffer( GLuint &framebuffer, GLuint &texture )
 	}
 
 	glBindFramebuffer( GL_FRAMEBUFFER, 0 );
-	return framebuffer;
 }

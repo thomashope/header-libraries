@@ -33,6 +33,7 @@ int main()
     glActiveTexture( GL_TEXTURE0 );
     glBindTexture( GL_TEXTURE_2D, tex );
     int x,y,n;
+    stbi_set_flip_vertically_on_load( true ); // NOTE: by default STBi points to the top left, openGL expect the bottom left
     unsigned char *pixels = stbi_load("sample.png", &x, &y, &n, 0);
     glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, x, y, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels ); 
     stbi_image_free(pixels);
@@ -85,6 +86,8 @@ int main()
         for( int i = 100; i < 200; i += 2 ) {
             Draw::point( i, 220 );
         }
+
+        Draw::line( 100, 210, 200, 210 );
 
         // Try a textured shape
         
