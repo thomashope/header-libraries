@@ -74,7 +74,6 @@
 ////// TODO ////////////////////////////////////////////////////////////////////
 //
 //  - convert line() to use triangles, optional settable width
-//  - can i remove the requires_flush_ variable and just check the vertex buffer is not empty?
 //  - make it possible to pass a pointer to a custom ortho matrix
 //  - test setOrthoMatrix x_offset and y_offset
 //      - i implemented something along those lines but i don't know if it actually works
@@ -174,7 +173,6 @@ namespace TJH_DRAW_NAMESPACE
     GLfloat mvp_matrix_[16]         = { 0.0f };
     GLfloat ortho_matrix_[16]       = { 0.0f };
     std::vector<GLfloat> vertex_buffer_;
-    bool requires_flush_            = false;
 
     // 'PRIVATE' MEMBER FUNCTIONS
     void push2( GLfloat one, GLfloat two );
@@ -308,7 +306,7 @@ namespace TJH_DRAW_NAMESPACE
 
     void flush()
     {
-        if( !requires_flush_ ) return;
+        if( vertex_buffer_.empty() ) return;
 
         switch( current_mode_ )
         {
@@ -352,7 +350,6 @@ namespace TJH_DRAW_NAMESPACE
         }
 
         vertex_buffer_.clear();
-        requires_flush_ = false;
     }
 
     // STATE ///////////////////////////////////////////////////////////////////
@@ -407,7 +404,6 @@ namespace TJH_DRAW_NAMESPACE
         quad( x, y, 1, 1 );
 
         current_mode_ = DrawMode::Colour2D;
-        requires_flush_ = true;
     }
     void line( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2 )
     {
@@ -435,7 +431,6 @@ namespace TJH_DRAW_NAMESPACE
         triangle( x1 + xperp, y1 + yperp, x1 + x12, y1 + y12, x1 + x12 + xperp, y1 + y12 + yperp );
 
         current_mode_ = DrawMode::Colour2D;
-        requires_flush_ = true;
     }
     void quad( GLfloat x1, GLfloat y1, GLfloat width, GLfloat height )
     {
@@ -450,7 +445,6 @@ namespace TJH_DRAW_NAMESPACE
         push3( x1, y1 + height, depth_ );           push4( red_, green_, blue_, alpha_ );
 
         current_mode_ = DrawMode::Colour2D;
-        requires_flush_ = true;
     }
     void triangle( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2, GLfloat x3, GLfloat y3 )
     {
@@ -461,7 +455,6 @@ namespace TJH_DRAW_NAMESPACE
         push3( x3, y3, depth_ ); push4( red_, green_, blue_, alpha_ );
 
         current_mode_ = DrawMode::Colour2D;
-        requires_flush_ = true;
     }
     void circle( GLfloat x, GLfloat y, GLfloat radius, int segments )
     {
@@ -480,7 +473,6 @@ namespace TJH_DRAW_NAMESPACE
         }
 
         current_mode_ = DrawMode::Colour2D;
-        requires_flush_ = true;
     }
 
     //
@@ -500,7 +492,6 @@ namespace TJH_DRAW_NAMESPACE
         push3( x, y + height, depth_ );         push4( red_, green_, blue_, alpha_ ); push2( 0, 0 );
 
         current_mode_ = DrawMode::Texture2D;
-        requires_flush_ = true;
     }
     void texturedQuad( GLfloat x, GLfloat y, GLfloat width, GLfloat height,
         GLfloat s, GLfloat t, GLfloat s_width, GLfloat t_height )
@@ -516,7 +507,6 @@ namespace TJH_DRAW_NAMESPACE
         push3( x, y + height, depth_ );         push4( red_, green_, blue_, alpha_ ); push2( s, t );
 
         current_mode_ = DrawMode::Texture2D;
-        requires_flush_ = true;
     }
     void texturedTriangle( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2, GLfloat x3, GLfloat y3,
         GLfloat s1, GLfloat t1, GLfloat s2, GLfloat t2, GLfloat s3, GLfloat t3 )
@@ -528,7 +518,6 @@ namespace TJH_DRAW_NAMESPACE
         push3( x3, y3, depth_ ); push4( red_, green_, blue_, alpha_ ); push2( s3, t3 );
 
         current_mode_ = DrawMode::Texture2D;
-        requires_flush_ = true;
     }
 
     //
@@ -546,7 +535,6 @@ namespace TJH_DRAW_NAMESPACE
         push3( x3, y3, z3 ); push4( red_, green_, blue_, alpha_ );
 
         current_mode_ = DrawMode::Colour3D;
-        requires_flush_ = true;
     }
     void quad( GLfloat x1, GLfloat y1, GLfloat z1,
         GLfloat x2, GLfloat y2, GLfloat z2,
@@ -563,7 +551,6 @@ namespace TJH_DRAW_NAMESPACE
         push3( x4, y4, z4 ); push4( red_, green_, blue_, alpha_ );
 
         current_mode_ = DrawMode::Colour3D;
-        requires_flush_ = true;
     }
 
     // UTILS //////////////////////////////////////////////////////////////////
