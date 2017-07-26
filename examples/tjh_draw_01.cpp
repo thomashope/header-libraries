@@ -25,12 +25,18 @@ int main()
 	GLuint framebuffer, texture;
 	createFramebuffer( framebuffer, texture );
 
+	//glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
+
 	SDL_Event event;
 	while( !done )
 	{
 		while( SDL_PollEvent( &event ) )
 		{
 			if( event.type == SDL_QUIT ) done = true;
+			if( event.type == SDL_KEYDOWN ) {
+				if( event.key.keysym.scancode == SDL_SCANCODE_SPACE )
+					draw::wireframe = !draw::wireframe;
+			}
 		}
 
 		// Bind the framebuffer we want to draw to
@@ -40,18 +46,19 @@ int main()
 		// Do our drawing to the framebuffer
 
 		draw::clear( 0, 0.5, 0.5 );
+		draw::setOrthoMatrix( 5, 5, 95, 95 );
 
 		draw::setColor( 1, 1, 1 );
-		draw::quad( 0, 0, 50, 50 );
+		draw::quad( 0, 0, 10, 10 );
 
 		draw::setColor( 1, 0, 0 );
-		draw::quad( WIDTH, 0, -50, 50 );
+		draw::quad( 100, 0, -10, 10 );
 
 		draw::setColor( 0, 1, 0 );
-		draw::quad( 0, HEIGHT, 50, -50 );
+		draw::quad( 0, 100, 10, -10 );
 
 		draw::setColor( 0, 0, 1 );
-		draw::quad( WIDTH, HEIGHT, -50, -50 );
+		draw::quad( 100, 100, -10, -10 );
 
 		draw::flush();
 
@@ -64,19 +71,31 @@ int main()
 		glBindTexture( GL_TEXTURE_2D, texture );
 		
 		draw::clear( 0.1, 0.1, 0.1 );
-		draw::setColor( 1, 1, 1 );
-		for( int i = 5; i < WIDTH; i += 10 )
-		{
-			draw::point( i, 10 );
-			draw::point( i, HEIGHT - 10 );
-		}
-		draw::texturedQuad( 10, 10, WIDTH/5.0f, HEIGHT/5.0f );
+		draw::setOrthoMatrix( -WIDTH/2, -HEIGHT/2, WIDTH, HEIGHT );
 
-		draw::setLineWidth( 2 );
+		draw::setColor( 1, 1, 1 );
+
+		for( int i = -WIDTH/2; i < WIDTH/2; i += 10 )
+			draw::point( i, 0 );
+		for( int i = -HEIGHT/2; i < HEIGHT/2; i += 10 )
+			draw::point( 0, i );
+
+		draw::texturedQuad( 10, 10, WIDTH/4.0f, HEIGHT/4.0f );
+
+		draw::lineWidth = 2;
 		draw::setColor( 1, 0, 0 );
-		draw::line( WIDTH/2, HEIGHT/2, WIDTH/2 + 50, HEIGHT/2 - 50 );
+		draw::line( 0, 0, 50, -50 );
+
+		draw::lineWidth = 4;
 		draw::setColor( 0, 1, 0 );
-		draw::line( WIDTH/2, HEIGHT/2, WIDTH/2 - 50, HEIGHT/2 + 50 );
+		draw::line( 0, 0, -50, 50 );
+
+		draw::lineWidth = std::sin( SDL_GetTicks() / 500.0f ) * 10.0f;
+
+		draw::setColor( 1, 1, 1 );
+		draw::quad( 100, -10, 100, -100 );
+		draw::triangle( -10, -10, -100, -10, -10, -100 );
+		draw::circle( -120, -120, 40 );
 
 		draw::flush();
 		

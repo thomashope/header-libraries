@@ -79,11 +79,22 @@
 //      - i implemented something along those lines but i don't know if it actually works
 //  - solid shapes have a line draw mode
 //      - when drawing shapes in line mode, lines expand inwards to preserve specified size
+//  - pointSize would be nice to have
 //  - 3d quad from point, normal, width, height
 //  - 3d textured quad
 //  - 3d circle from point, line, radius
 //  - 3d sphere
 //  - 3d cylinder
+//  - 3d line, will require like setViewDirection to make them face the camera
+//  - setWireframe toggle wireframe rendering for at least all the 2d stuff
+//      - wireframes should also respond to lineWidth
+//      - wireframes should work with textured draw calls
+//      - how they work in 3d will be more complicated
+//  - setOrtho matrix and setMVP matrix should flush the vertex_buffer
+//      - that way you can set the ortho and mvp whenever you want and everything after
+//        it will use whatever was last set
+//  - If i want to not clobber the GL state then there will need to be a begin() function
+//    stores any state that the renderer will change and stores is on end (end should also flush)
 
 ////// HEADER //////////////////////////////////////////////////////////////////
 
@@ -97,10 +108,22 @@ namespace TJH_DRAW_NAMESPACE
 
     // STATE ///////////////////////////////////////////////////////////////////
 
-    void clear( GLfloat r, GLfloat g, GLfloat b, GLfloat a = 1.0f );
-    void setColor( GLfloat r, GLfloat g, GLfloat b, GLfloat a = 1.0f );
-    void setDepth( GLfloat depth );
-    void setLineWidth( GLfloat width );
+    extern const float PI;
+
+    extern float red;           // Colour to draw with (does not affect clear colour!)
+    extern float green;         //  Normal values are in the range [0.0, 1.0]
+    extern float blue;          //  Set them direclty or use setColor(r,g,b,a);
+    extern float alpha;         // 0.0 == transparent, 1.0 == opaque/solid
+
+    extern float lineWidth;     // 
+    extern float orthoDepth;    // Depth (z value) at which to draw 2D shapes
+    extern bool  wireframe;     //
+
+    void clear( GLfloat r, GLfloat g, GLfloat b, GLfloat a = 1.0f )             { glClearColor( r, g, b, a ); glClear( GL_COLOR_BUFFER_BIT ); }
+    void setColor( GLfloat r, GLfloat g, GLfloat b, GLfloat a = 1.0f )          { red = r; green = g; blue = b; alpha = a; }
+    void setDepth( GLfloat depth )                                              { orthoDepth = depth; }
+    void setLineWidth( GLfloat width )                                          { lineWidth = width; }
+    void setWireframe( bool enable )                                            { wireframe = enable; };
     void setOrthoMatrix( GLfloat width, GLfloat height );
     void setOrthoMatrix( GLfloat x_offset, GLfloat y_offset, GLfloat width, GLfloat height );
     // void setOrthoMatrix( GLfloat* matrix );
@@ -127,8 +150,6 @@ namespace TJH_DRAW_NAMESPACE
         GLfloat s, GLfloat t, GLfloat s_width, GLfloat t_height );
     void texturedTriangle( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2, GLfloat x3, GLfloat y3,
         GLfloat s1, GLfloat t1, GLfloat s2, GLfloat t2, GLfloat s3, GLfloat t3 );
-
-    extern const float PI;
 }
 
 #endif
@@ -142,31 +163,32 @@ namespace TJH_DRAW_NAMESPACE
 namespace TJH_DRAW_NAMESPACE
 {
     // PUBLIC MEMBER VARIABLES
-    const float PI = 3.14159265359;
+    const float PI          = 3.14159265359;
+
+    float red               = 1.0f;
+    float green             = 1.0f;
+    float blue              = 1.0f;
+    float alpha             = 1.0f;
+    float lineWidth         = 1.0f;
+    float orthoDepth        = 0.0f;
+    bool  wireframe         = false;
 
     // 'PRIVATE' MEMBER VARIABLES
     enum class DrawMode { Colour2D, Texture2D, Colour3D, Texture3D };
     DrawMode current_mode_  = DrawMode::Colour2D;
 
-    GLuint colour_program_   = 0;
-    GLuint texture_program_  = 0; // TODO: implement
+    GLuint colour_program_  = 0;
+    GLuint texture_program_ = 0;
 
     GLuint colour_vao_   = 0;
     GLuint colour_vbo_   = 0;
     GLuint texture_vao_  = 0;
     GLuint texture_vbo_  = 0;
 
-    float red_              = 1.0f;
-    float green_            = 1.0f;
-    float blue_             = 1.0f;
-    float alpha_            = 1.0f;
-    float line_width_       = 1.0f;
-
     GLint colour_3d_mvp_uniform_    = 0;
     GLint texture_3d_mvp_uniform_   = 0;
     float width_                    = 1.0f;
     float height_                   = 1.0f;
-    float depth_                    = 0.0f;
     float x_offset_                 = 0.0f;
     float y_offset_                 = 0.0f;
 
@@ -178,6 +200,8 @@ namespace TJH_DRAW_NAMESPACE
     void push2( GLfloat one, GLfloat two );
     void push3( GLfloat one, GLfloat two, GLfloat three );
     void push4( GLfloat one, GLfloat two, GLfloat three, GLfloat four );
+    void pushTriangle( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2, GLfloat x3, GLfloat y3 );
+    void pushQuad( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2, GLfloat x3, GLfloat y3, GLfloat x4, GLfloat y4 );
     void send_ortho_matrix();
     void send_mvp_matrix();
 
@@ -354,40 +378,25 @@ namespace TJH_DRAW_NAMESPACE
 
     // STATE ///////////////////////////////////////////////////////////////////
 
-    void clear( GLfloat r, GLfloat g, GLfloat b, GLfloat a )
-    {
-        glClearColor( r, g, b, a );
-        glClear( GL_COLOR_BUFFER_BIT );
-    }
-    void setColor( GLfloat r, GLfloat g, GLfloat b, GLfloat a )
-    {
-        red_    = r;
-        green_  = g;
-        blue_   = b;
-        alpha_  = a;
-    }
-    void setLineWidth( GLfloat width )
-    {
-        line_width_ = width;
-    }
     void setOrthoMatrix( GLfloat width, GLfloat height )
     {
+        flush();
+        x_offset_ = 0.0f;
+        y_offset_ = 0.0f;
         width_ = width;
         height_ = height;
     }
     void setOrthoMatrix( GLfloat x_offset, GLfloat y_offset, GLfloat width, GLfloat height )
     {
+        flush();
         x_offset_ = x_offset;
         y_offset_ = y_offset;
         height_ = height;
         width_ = width;
     }
-    void setDepth( GLfloat depth )
-    {
-        depth_ = depth;
-    }
     void setMVPMatrix( GLfloat* matrix )
     {
+        flush();
         std::memcpy( mvp_matrix_, matrix, sizeof(GLfloat) * 16 );
     }
 
@@ -401,13 +410,23 @@ namespace TJH_DRAW_NAMESPACE
     {
         if( current_mode_ != DrawMode::Colour2D ) flush();
 
-        quad( x, y, 1, 1 );
+        pushTriangle( x    , y    , x + 1, y    , x + 1, y + 1 );
+        pushTriangle( x    , y    , x + 1, y + 1, x    , y + 1 );
+
+        // push3( x    , y    , orthoDepth );  push4( red, green, blue, alpha );
+        // push3( x + 1, y    , orthoDepth );  push4( red, green, blue, alpha );
+        // push3( x + 1, y + 1, orthoDepth );  push4( red, green, blue, alpha );
+
+        // push3( x    , y    , orthoDepth );  push4( red, green, blue, alpha );
+        // push3( x + 1, y + 1, orthoDepth );  push4( red, green, blue, alpha );
+        // push3( x    , y + 1, orthoDepth );  push4( red, green, blue, alpha );
 
         current_mode_ = DrawMode::Colour2D;
     }
     void line( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2 )
     {
         if( current_mode_ != DrawMode::Colour2D ) flush();
+        current_mode_ = DrawMode::Colour2D;
 
         // TODO: this can obviously be crompressed quite a bit
 
@@ -422,43 +441,70 @@ namespace TJH_DRAW_NAMESPACE
 
         xperp /= length;
         yperp /= length;
-        xperp *= line_width_;
-        yperp *= line_width_;
+        xperp *= lineWidth;
+        yperp *= lineWidth;
 
         x1 -= xperp * 0.5f;
         y1 -= yperp * 0.5f;
-        triangle( x1        , y1        , x1 + x12, y1 + y12, x1 + xperp      , y1 + yperp );
-        triangle( x1 + xperp, y1 + yperp, x1 + x12, y1 + y12, x1 + x12 + xperp, y1 + y12 + yperp );
 
-        current_mode_ = DrawMode::Colour2D;
+        pushTriangle( x1, y1,
+            x1 + x12, y1 + y12,
+            x1 + xperp, y1 + yperp );
+        pushTriangle( x1 + xperp, y1 + yperp,
+            x1 + x12, y1 + y12,
+            x1 + x12 + xperp, y1 + y12 + yperp );
     }
-    void quad( GLfloat x1, GLfloat y1, GLfloat width, GLfloat height )
+    void quad( GLfloat x, GLfloat y, GLfloat width, GLfloat height )
     {
         if( current_mode_ != DrawMode::Colour2D ) flush();
-
-        push3( x1, y1, depth_ );                    push4( red_, green_, blue_, alpha_ );
-        push3( x1 + width, y1, depth_ );            push4( red_, green_, blue_, alpha_ );
-        push3( x1 + width, y1 + height, depth_ );   push4( red_, green_, blue_, alpha_ );
-
-        push3( x1, y1, depth_ );                    push4( red_, green_, blue_, alpha_ );
-        push3( x1 + width, y1 + height, depth_ );   push4( red_, green_, blue_, alpha_ );
-        push3( x1, y1 + height, depth_ );           push4( red_, green_, blue_, alpha_ );
-
         current_mode_ = DrawMode::Colour2D;
+
+        if( !wireframe )
+        {
+            pushTriangle( x, y, x + width, y         , x + width, y + height );
+            pushTriangle( x, y, x + width, y + height, x        , y + height );
+        } else {
+            const float midx = x + width * 0.5f;
+            const float midy = y + height * 0.5f;
+            float cornerx = midx - x;
+            float cornery = midy - y;
+            const float cornerLength = std::sqrt( cornerx * cornerx + cornery * cornery );
+
+            // TODO: fix this!! incorrect line thickness
+            //
+            // Corner x/y is supposed to be the vector offset from the corner towards the middle to give the
+            // wireframe it's correct line thickness, currently though this is incorrect as i'm using lineWidth as the length
+            // of the hypotenuse while the thickness of the line is the side of the triangle
+            // This means that with a line thickness of 1 when in wireframe mode the edge lines are actually slightly thinner
+            // than one unit
+
+            cornerx = (cornerx / cornerLength) * lineWidth;
+            cornery = (cornery / cornerLength) * lineWidth;
+
+            pushQuad( x, y, x + cornerx, y + cornery, x + width - cornerx, y + cornery, x + width, y );
+            pushQuad( x, y, x + cornerx, y + cornery, x + cornerx, y - cornery + height, x, y + height );
+            pushQuad( x + width, y + height, x + width, y, x + width - cornerx, y + cornery, x + width - cornerx, y + height - cornery );            
+            pushQuad( x, y + height, x + width, y + height, x + width - cornerx, y + height - cornery, x + cornerx, y + height - cornery );
+        }
     }
     void triangle( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2, GLfloat x3, GLfloat y3 )
     {
         if( current_mode_ != DrawMode::Colour2D ) flush();
-
-        push3( x1, y1, depth_ ); push4( red_, green_, blue_, alpha_ );
-        push3( x2, y2, depth_ ); push4( red_, green_, blue_, alpha_ );
-        push3( x3, y3, depth_ ); push4( red_, green_, blue_, alpha_ );
-
         current_mode_ = DrawMode::Colour2D;
+
+        if( !wireframe )
+        {
+            pushTriangle( x1, y1, x2, y2, x3, y3 );
+        } else {
+            line( x1, y1, x2, y2 );
+            line( x2, y2, x3, y3 );
+            line( x3, y3, x1, y1 );
+        }
     }
     void circle( GLfloat x, GLfloat y, GLfloat radius, int segments )
     {
         if( current_mode_ != DrawMode::Colour2D ) flush();
+        current_mode_ = DrawMode::Colour2D;
 
         float fraction = (PI*2) / (float)segments;
         for( int i = 0; i < segments; i++ )
@@ -467,12 +513,16 @@ namespace TJH_DRAW_NAMESPACE
             float b1 = y + std::cos(fraction*i) * radius;
             float a2 = x + std::sin(fraction*(i+1)) * radius;
             float b2 = y + std::cos(fraction*(i+1)) * radius;
-            push3(  x,  y, depth_ ); push4( red_, green_, blue_, alpha_ );
-            push3( a1, b1, depth_ ); push4( red_, green_, blue_, alpha_ );
-            push3( a2, b2, depth_ ); push4( red_, green_, blue_, alpha_ );
-        }
 
-        current_mode_ = DrawMode::Colour2D;
+            if( !wireframe )
+            {
+                push3(  x,  y, orthoDepth ); push4( red, green, blue, alpha );
+                push3( a1, b1, orthoDepth ); push4( red, green, blue, alpha );
+                push3( a2, b2, orthoDepth ); push4( red, green, blue, alpha );
+            } else {
+                line( a1, b1, a2, b2 );
+            }
+        }
     }
 
     //
@@ -482,42 +532,53 @@ namespace TJH_DRAW_NAMESPACE
     void texturedQuad( GLfloat x, GLfloat y, GLfloat width, GLfloat height )
     {
         if( current_mode_ != DrawMode::Texture2D ) flush();
-
-        push3( x, y, depth_ );                  push4( red_, green_, blue_, alpha_ ); push2( 0, 1 );
-        push3( x + width, y, depth_ );          push4( red_, green_, blue_, alpha_ ); push2( 1, 1 );
-        push3( x + width, y + height, depth_ ); push4( red_, green_, blue_, alpha_ ); push2( 1, 0 );
-
-        push3( x, y, depth_ );                  push4( red_, green_, blue_, alpha_ ); push2( 0, 1 );
-        push3( x + width, y + height, depth_ ); push4( red_, green_, blue_, alpha_ ); push2( 1, 0 );
-        push3( x, y + height, depth_ );         push4( red_, green_, blue_, alpha_ ); push2( 0, 0 );
-
         current_mode_ = DrawMode::Texture2D;
+
+        if( !wireframe )
+        {
+            push3( x, y, orthoDepth );                  push4( red, green, blue, alpha ); push2( 0, 1 );
+            push3( x + width, y, orthoDepth );          push4( red, green, blue, alpha ); push2( 1, 1 );
+            push3( x + width, y + height, orthoDepth ); push4( red, green, blue, alpha ); push2( 1, 0 );
+
+            push3( x, y, orthoDepth );                  push4( red, green, blue, alpha ); push2( 0, 1 );
+            push3( x + width, y + height, orthoDepth ); push4( red, green, blue, alpha ); push2( 1, 0 );
+            push3( x, y + height, orthoDepth );         push4( red, green, blue, alpha ); push2( 0, 0 );
+        } else {
+
+        }
     }
     void texturedQuad( GLfloat x, GLfloat y, GLfloat width, GLfloat height,
         GLfloat s, GLfloat t, GLfloat s_width, GLfloat t_height )
     {
         if( current_mode_ != DrawMode::Texture2D ) flush();
-
-        push3( x, y, depth_ );                  push4( red_, green_, blue_, alpha_ ); push2( s, t + t_height );
-        push3( x + width, y, depth_ );          push4( red_, green_, blue_, alpha_ ); push2( s + s_width, t + t_height );
-        push3( x + width, y + height, depth_ ); push4( red_, green_, blue_, alpha_ ); push2( s + s_width, t );
-
-        push3( x, y, depth_ );                  push4( red_, green_, blue_, alpha_ ); push2( s, t + t_height );
-        push3( x + width, y + height, depth_ ); push4( red_, green_, blue_, alpha_ ); push2( s + s_width, t );
-        push3( x, y + height, depth_ );         push4( red_, green_, blue_, alpha_ ); push2( s, t );
-
         current_mode_ = DrawMode::Texture2D;
+
+        if( !wireframe )
+        {
+            push3( x, y, orthoDepth );                  push4( red, green, blue, alpha ); push2( s, t + t_height );
+            push3( x + width, y, orthoDepth );          push4( red, green, blue, alpha ); push2( s + s_width, t + t_height );
+            push3( x + width, y + height, orthoDepth ); push4( red, green, blue, alpha ); push2( s + s_width, t );
+
+            push3( x, y, orthoDepth );                  push4( red, green, blue, alpha ); push2( s, t + t_height );
+            push3( x + width, y + height, orthoDepth ); push4( red, green, blue, alpha ); push2( s + s_width, t );
+            push3( x, y + height, orthoDepth );         push4( red, green, blue, alpha ); push2( s, t );
+        } else {
+        }
     }
     void texturedTriangle( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2, GLfloat x3, GLfloat y3,
         GLfloat s1, GLfloat t1, GLfloat s2, GLfloat t2, GLfloat s3, GLfloat t3 )
     {
         if( current_mode_ != DrawMode::Texture2D ) flush();
-
-        push3( x1, y1, depth_ ); push4( red_, green_, blue_, alpha_ ); push2( s1, t1 );
-        push3( x2, y2, depth_ ); push4( red_, green_, blue_, alpha_ ); push2( s2, t2 );
-        push3( x3, y3, depth_ ); push4( red_, green_, blue_, alpha_ ); push2( s3, t3 );
-
         current_mode_ = DrawMode::Texture2D;
+
+        if( !wireframe )
+        {
+            push3( x1, y1, orthoDepth ); push4( red, green, blue, alpha ); push2( s1, t1 );
+            push3( x2, y2, orthoDepth ); push4( red, green, blue, alpha ); push2( s2, t2 );
+            push3( x3, y3, orthoDepth ); push4( red, green, blue, alpha ); push2( s3, t3 );
+        } else {
+
+        }
     }
 
     //
@@ -529,12 +590,16 @@ namespace TJH_DRAW_NAMESPACE
         GLfloat x3, GLfloat y3, GLfloat z3 )
     {
         if( current_mode_ != DrawMode::Colour3D ) flush();
-
-        push3( x1, y1, z1 ); push4( red_, green_, blue_, alpha_ );
-        push3( x2, y2, z2 ); push4( red_, green_, blue_, alpha_ );
-        push3( x3, y3, z3 ); push4( red_, green_, blue_, alpha_ );
-
         current_mode_ = DrawMode::Colour3D;
+
+        if( !wireframe )
+        {
+            push3( x1, y1, z1 ); push4( red, green, blue, alpha );
+            push3( x2, y2, z2 ); push4( red, green, blue, alpha );
+            push3( x3, y3, z3 ); push4( red, green, blue, alpha );
+        } else {
+
+        }
     }
     void quad( GLfloat x1, GLfloat y1, GLfloat z1,
         GLfloat x2, GLfloat y2, GLfloat z2,
@@ -542,15 +607,19 @@ namespace TJH_DRAW_NAMESPACE
         GLfloat x4, GLfloat y4, GLfloat z4 )
     {
         if( current_mode_ != DrawMode::Colour3D ) flush();
-
-        push3( x1, y1, z1 ); push4( red_, green_, blue_, alpha_ );
-        push3( x2, y2, z2 ); push4( red_, green_, blue_, alpha_ );
-        push3( x3, y3, z3 ); push4( red_, green_, blue_, alpha_ );
-        push3( x1, y1, z1 ); push4( red_, green_, blue_, alpha_ );
-        push3( x3, y3, z3 ); push4( red_, green_, blue_, alpha_ );
-        push3( x4, y4, z4 ); push4( red_, green_, blue_, alpha_ );
-
         current_mode_ = DrawMode::Colour3D;
+
+        if( !wireframe )
+        {
+            push3( x1, y1, z1 ); push4( red, green, blue, alpha );
+            push3( x2, y2, z2 ); push4( red, green, blue, alpha );
+            push3( x3, y3, z3 ); push4( red, green, blue, alpha );
+            push3( x1, y1, z1 ); push4( red, green, blue, alpha );
+            push3( x3, y3, z3 ); push4( red, green, blue, alpha );
+            push3( x4, y4, z4 ); push4( red, green, blue, alpha );
+        } else {
+
+        }
     }
 
     // UTILS //////////////////////////////////////////////////////////////////
@@ -593,7 +662,7 @@ namespace TJH_DRAW_NAMESPACE
         GLuint program = glCreateProgram();
         glAttachShader( program, vertex_shader );
         glAttachShader( program, fragment_shader );
-        glBindFragDataLocation( program, 0, "outColour");
+        glBindFragDataLocation( program, 0, "outColour" );
         glLinkProgram( program );
         glUseProgram( program );
         glDeleteShader( vertex_shader );
@@ -618,12 +687,33 @@ namespace TJH_DRAW_NAMESPACE
         vertex_buffer_.push_back( three );
         vertex_buffer_.push_back( four );
     }
+    void pushTriangle( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2, GLfloat x3, GLfloat y3 )
+    {
+        push3( x1, y1, orthoDepth ); push4( red, green, blue, alpha );
+        push3( x2, y2, orthoDepth ); push4( red, green, blue, alpha );
+        push3( x3, y3, orthoDepth ); push4( red, green, blue, alpha );
+    }
+    void pushQuad( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2, GLfloat x3, GLfloat y3, GLfloat x4, GLfloat y4 )
+    {
+        // Expects points in clockwise order
+        push3( x1, y1, orthoDepth ); push4( red, green, blue, alpha );
+        push3( x2, y2, orthoDepth ); push4( red, green, blue, alpha );
+        push3( x3, y3, orthoDepth ); push4( red, green, blue, alpha );
+
+        push3( x1, y1, orthoDepth ); push4( red, green, blue, alpha );
+        push3( x3, y3, orthoDepth ); push4( red, green, blue, alpha );
+        push3( x4, y4, orthoDepth ); push4( red, green, blue, alpha );
+    }
     void send_ortho_matrix()
     {
         GLfloat xs =  2.0f / width_;     // x scale
         GLfloat ys = -2.0f / height_;    // y scale
-        GLfloat xo = -1.0f - x_offset_ / width_; // x offset
-        GLfloat yo =  1.0f - y_offset_ / height_; // y offset
+        GLfloat xo = -1.0f - (x_offset_ * 2) / width_; // x offset
+        GLfloat yo =  1.0f + (y_offset_ * 2) / height_; // y offset
+        
+        // NOTE: not sure if the `* 2` above is actualy correct?
+        // TODO: more testing to find out what is...
+
         /*
         GLfloat proj[16] = {
             xs,  0,  0,  0,
