@@ -61,9 +61,28 @@
 // features.
 //
 
+// If defined this file will include SDL.h
+#ifndef TJH_DRAW_INCLUDE_SDL
+#define TJH_DRAW_INCLUDE_SDL 1
+#endif
+
+// If defined this file will include glew.h
+#ifndef TJH_DRAW_INCLUDE_GLEW
+#define TJH_DRAW_INCLUDE_GLEW 1
+#endif
+
+// IMPORTANT: If you want this to include glew for your, you will need to set these correctly
+#ifndef TJH_DRAW_SDL_H_LOCATION
+#define TJH_DRAW_SDL_H_LOCATION <SDL2/SDL.h>
+#endif
+
+#ifndef TJH_DRAW_GLEW_H_LOCATION
+#define TJH_DRAW_GLEW_H_LOCATION <GL/glew.h>
+#endif
+
 // Change this to customise the namespace for this library
 #ifndef TJH_DRAW_NAMESPACE
-#define TJH_DRAW_NAMESPACE Draw
+#define TJH_DRAW_NAMESPACE draw
 #endif
 
 // Change this to use a custom printf like function for your platform, for example SDL_Log
@@ -85,7 +104,7 @@
 //  - 3d circle from point, line, radius
 //  - 3d sphere
 //  - 3d cylinder
-//  - 3d line, will require like setViewDirection to make them face the camera
+//  - 3d line
 //  - setWireframe toggle wireframe rendering for at least all the 2d stuff
 //      - wireframes should also respond to lineWidth
 //      - wireframes should work with textured draw calls
@@ -93,20 +112,51 @@
 //  - setOrtho matrix and setMVP matrix should flush the vertex_buffer
 //      - that way you can set the ortho and mvp whenever you want and everything after
 //        it will use whatever was last set
+//  - ditch flush !!! 
+//      - let the user choose either to use begin() and end() which will cache the verts in
+//        in the buffer till the end
+//      - or just call the functions whenever and it will render immidiately
+//      - also flush is problematic because you might never call it and run out of memory!
 //  - If i want to not clobber the GL state then there will need to be a begin() function
 //    stores any state that the renderer will change and stores is on end (end should also flush)
+//
+// From tjh_window.h
+//
+// - choose requested opengl version
+// - set fullscreen state
+// - optional antialiasing
+// - make is so you don't need to modify this file to change the #defines
+//   have them check to see if they are already defined first
 
 ////// HEADER //////////////////////////////////////////////////////////////////
 
+#if TJH_DRAW_INCLUDE_SDL
+#include TJH_DRAW_SDL_H_LOCATION
+#endif
+
+#if TJH_DRAW_INCLUDE_GLEW
+#include TJH_DRAW_GLEW_H_LOCATION
+#endif
+
 namespace TJH_DRAW_NAMESPACE
 {
-    // LIBRARY FUNCTIONS ///////////////////////////////////////////////////////
+    // WINDOW /////////////////////////////////////////////////////////////////
     
-    void init( GLfloat width, GLfloat height ); // TODO: return and error flag or something?
-    void shutdown();
-    void flush();
+    extern SDL_Window* sdl_window;
+    extern SDL_GLContext sdl_gl_context;
 
-    // STATE ///////////////////////////////////////////////////////////////////
+    bool init( const char* title, GLfloat x_offset, GLfloat y_offset, GLfloat width, GLfloat height );
+    bool init( const char* title, GLfloat width, GLfloat height );
+    void shutdown();
+
+    void clear( GLfloat r, GLfloat g, GLfloat b, GLfloat a = 1.0f )             { glClearColor( r, g, b, a ); glClear( GL_COLOR_BUFFER_BIT ); }
+    void present()                                                              { SDL_GL_SwapWindow( sdl_window ); }
+
+    bool setVsync( bool enable );
+
+    void getSize( int* width, int* height )                                     { SDL_GetWindowSize( sdl_window, width, height ); }
+
+    // DRAWING ////////////////////////////////////////////////////////////////
 
     extern const float PI;
 
@@ -119,7 +169,8 @@ namespace TJH_DRAW_NAMESPACE
     extern float orthoDepth;    // Depth (z value) at which to draw 2D shapes
     extern bool  wireframe;     //
 
-    void clear( GLfloat r, GLfloat g, GLfloat b, GLfloat a = 1.0f )             { glClearColor( r, g, b, a ); glClear( GL_COLOR_BUFFER_BIT ); }
+    void flush();
+
     void setColor( GLfloat r, GLfloat g, GLfloat b, GLfloat a = 1.0f )          { red = r; green = g; blue = b; alpha = a; }
     void setDepth( GLfloat depth )                                              { orthoDepth = depth; }
     void setLineWidth( GLfloat width )                                          { lineWidth = width; }
@@ -128,14 +179,25 @@ namespace TJH_DRAW_NAMESPACE
     void setOrthoMatrix( GLfloat x_offset, GLfloat y_offset, GLfloat width, GLfloat height );
     // void setOrthoMatrix( GLfloat* matrix );
     void setMVPMatrix( GLfloat* matrix );
+    void setViewDirection( float x, float y, float z );
 
     // PRIMATIVES //////////////////////////////////////////////////////////////
 
+    // 2D
+
     void point( GLfloat x, GLfloat y );
     void line( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2 );
-    void quad( GLfloat x, GLfloat y, GLfloat width, GLfloat height );
+    void rectangle( GLfloat x, GLfloat y, GLfloat width, GLfloat height );
     void triangle( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2, GLfloat x3, GLfloat y3 );
     void circle( GLfloat x, GLfloat y, GLfloat radius, int segments = 16 );
+
+    void texturedQuad( GLfloat x, GLfloat y, GLfloat width, GLfloat height );
+    void texturedQuad( GLfloat x, GLfloat y, GLfloat width, GLfloat height,
+        GLfloat s, GLfloat t, GLfloat s_width, GLfloat t_height );
+    void texturedTriangle( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2, GLfloat x3, GLfloat y3,
+        GLfloat s1, GLfloat t1, GLfloat s2, GLfloat t2, GLfloat s3, GLfloat t3 );
+
+    // 3D
 
     void triangle( GLfloat x1, GLfloat y1, GLfloat z1,
         GLfloat x2, GLfloat y2, GLfloat z2,
@@ -144,12 +206,8 @@ namespace TJH_DRAW_NAMESPACE
         GLfloat x2, GLfloat y2, GLfloat z2,
         GLfloat x3, GLfloat y3, GLfloat z3,
         GLfloat x4, GLfloat y4, GLfloat z4 );
-
-    void texturedQuad( GLfloat x, GLfloat y, GLfloat width, GLfloat height );
-    void texturedQuad( GLfloat x, GLfloat y, GLfloat width, GLfloat height,
-        GLfloat s, GLfloat t, GLfloat s_width, GLfloat t_height );
-    void texturedTriangle( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2, GLfloat x3, GLfloat y3,
-        GLfloat s1, GLfloat t1, GLfloat s2, GLfloat t2, GLfloat s3, GLfloat t3 );
+    //void billboard( float x, float y, float z, float width, float height,
+    //    bool lockx = false, bool locky = false, bool lockz = false );
 }
 
 #endif
@@ -163,6 +221,9 @@ namespace TJH_DRAW_NAMESPACE
 namespace TJH_DRAW_NAMESPACE
 {
     // PUBLIC MEMBER VARIABLES
+    SDL_Window*     sdl_window      = NULL;
+    SDL_GLContext   sdl_gl_context  = NULL;
+
     const float PI          = 3.14159265359;
 
     float red               = 1.0f;
@@ -192,6 +253,10 @@ namespace TJH_DRAW_NAMESPACE
     float x_offset_                 = 0.0f;
     float y_offset_                 = 0.0f;
 
+    float view_x_                   = 0.0f;
+    float view_y_                   = 0.0f;
+    float view_z_                   = 0.0f;
+
     GLfloat mvp_matrix_[16]         = { 0.0f };
     GLfloat ortho_matrix_[16]       = { 0.0f };
     std::vector<GLfloat> vertex_buffer_;
@@ -210,8 +275,50 @@ namespace TJH_DRAW_NAMESPACE
 
     // LIBRARY FUNCTIONS ///////////////////////////////////////////////////////
 
-    void init( GLfloat width, GLfloat height )
+    bool init( const char* title, GLfloat width, GLfloat height )
     {
+        return init( title, 0, 0, width, height );
+    }
+
+    bool init( const char* title, GLfloat x_offset, GLfloat y_offset, GLfloat width, GLfloat height )
+    {
+        if( SDL_Init(SDL_INIT_EVERYTHING) )
+        {
+            TJH_DRAW_PRINTF("ERROR: could not init SDL2 %s\n", SDL_GetError());
+            return false;
+        }
+
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
+        SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
+        SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 4);
+
+        sdl_window = SDL_CreateWindow( title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, width, height, SDL_WINDOW_OPENGL );
+        if( sdl_window == NULL )
+        {
+            TJH_DRAW_PRINTF("ERROR: creating window %s\n", SDL_GetError());
+            return false;
+        }
+
+        sdl_gl_context = SDL_GL_CreateContext( sdl_window );
+        if( sdl_gl_context == NULL )
+        {
+            TJH_DRAW_PRINTF("ERROR: creating opengl context %s\n", SDL_GetError());
+            return false;
+        }
+
+        glewExperimental = GL_TRUE;
+        GLenum error = glewInit();
+        if( error != GLEW_OK )
+        {
+            TJH_DRAW_PRINTF("ERROR: starting glew %d", error);
+            return false;
+        }
+
+        glEnable(GL_MULTISAMPLE);
+        setVsync( true );
+
         const char* colour_3d_vert_src =
             R"(#version 150 core
             uniform mat4 mvp;
@@ -304,13 +411,13 @@ namespace TJH_DRAW_NAMESPACE
         glEnableVertexAttribArray( texAtrib );
         glVertexAttribPointer( texAtrib, 2, GL_FLOAT, GL_FALSE, 9*sizeof(GLfloat), (void*)(7*sizeof(float)) );
 
-        setOrthoMatrix( width, height );
-
-        // Unbind  our state so we don't completely confuse the next person
+        setOrthoMatrix( x_offset, y_offset, width, height );
 
         glBindVertexArray(0);
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         glUseProgram(0);
+
+        return true;
     }
 
     void delete_and_zero_program( GLuint program ) { if(program){glDeleteProgram(program);program=0;} }
@@ -326,6 +433,35 @@ namespace TJH_DRAW_NAMESPACE
 
         delete_and_zero_program( colour_program_ );
         delete_and_zero_program( texture_program_ );
+
+        SDL_GL_DeleteContext( sdl_gl_context );
+        sdl_gl_context = NULL;
+        SDL_DestroyWindow( sdl_window );
+        sdl_window = NULL;
+        SDL_Quit();
+    }
+
+    bool setVsync( bool enable )
+    {
+        if( enable )
+        {
+            // try late swap tearing first
+            bool success = (SDL_GL_SetSwapInterval( -1 ) == 0);
+            if( success )
+            {
+                return true;
+            }
+            else
+            {
+                // If that fails try normal vsync
+                return SDL_GL_SetSwapInterval( 1 ) == 0;
+            }
+        }
+        else
+        {
+            // Pass zero to disable vysinc
+            return SDL_GL_SetSwapInterval( 0 ) == 0;
+        }
     }
 
     void flush()
@@ -399,6 +535,11 @@ namespace TJH_DRAW_NAMESPACE
         flush();
         std::memcpy( mvp_matrix_, matrix, sizeof(GLfloat) * 16 );
     }
+    void setViewDirection( float x, float y, float z )
+    {
+        flush();
+        view_x_ = x; view_y_ = y; view_z_ = z;
+    }
 
     // PRIMATIVES //////////////////////////////////////////////////////////////
 
@@ -413,14 +554,6 @@ namespace TJH_DRAW_NAMESPACE
         pushTriangle( x    , y    , x + 1, y    , x + 1, y + 1 );
         pushTriangle( x    , y    , x + 1, y + 1, x    , y + 1 );
 
-        // push3( x    , y    , orthoDepth );  push4( red, green, blue, alpha );
-        // push3( x + 1, y    , orthoDepth );  push4( red, green, blue, alpha );
-        // push3( x + 1, y + 1, orthoDepth );  push4( red, green, blue, alpha );
-
-        // push3( x    , y    , orthoDepth );  push4( red, green, blue, alpha );
-        // push3( x + 1, y + 1, orthoDepth );  push4( red, green, blue, alpha );
-        // push3( x    , y + 1, orthoDepth );  push4( red, green, blue, alpha );
-
         current_mode_ = DrawMode::Colour2D;
     }
     void line( GLfloat x1, GLfloat y1, GLfloat x2, GLfloat y2 )
@@ -428,21 +561,15 @@ namespace TJH_DRAW_NAMESPACE
         if( current_mode_ != DrawMode::Colour2D ) flush();
         current_mode_ = DrawMode::Colour2D;
 
-        // TODO: this can obviously be crompressed quite a bit
-
         GLfloat x12 = x2 - x1;
         GLfloat y12 = y2 - y1;
-        GLfloat length = std::sqrt(x12 * x12 + y12 * y12);
+        GLfloat invLength = 1.0f / std::sqrt(x12 * x12 + y12 * y12);
 
-        GLfloat cos90 = 0;
-        GLfloat sin90 = 1;
-        GLfloat xperp = x12 * cos90 - y12 * sin90;
-        GLfloat yperp = x12 * sin90 + y12 * cos90;
+        GLfloat xperp = -y12;
+        GLfloat yperp = x12;
 
-        xperp /= length;
-        yperp /= length;
-        xperp *= lineWidth;
-        yperp *= lineWidth;
+        xperp *= invLength * lineWidth;
+        yperp *= invLength * lineWidth;
 
         x1 -= xperp * 0.5f;
         y1 -= yperp * 0.5f;
@@ -454,7 +581,7 @@ namespace TJH_DRAW_NAMESPACE
             x1 + x12, y1 + y12,
             x1 + x12 + xperp, y1 + y12 + yperp );
     }
-    void quad( GLfloat x, GLfloat y, GLfloat width, GLfloat height )
+    void rectangle( GLfloat x, GLfloat y, GLfloat width, GLfloat height )
     {
         if( current_mode_ != DrawMode::Colour2D ) flush();
         current_mode_ = DrawMode::Colour2D;
@@ -496,6 +623,9 @@ namespace TJH_DRAW_NAMESPACE
         {
             pushTriangle( x1, y1, x2, y2, x3, y3 );
         } else {
+
+            // TODO: triangle wireframe that isn't dumb
+
             line( x1, y1, x2, y2 );
             line( x2, y2, x3, y3 );
             line( x3, y3, x1, y1 );
@@ -506,21 +636,34 @@ namespace TJH_DRAW_NAMESPACE
         if( current_mode_ != DrawMode::Colour2D ) flush();
         current_mode_ = DrawMode::Colour2D;
 
-        float fraction = (PI*2) / (float)segments;
-        for( int i = 0; i < segments; i++ )
-        {
-            float a1 = x + std::sin(fraction*i) * radius;
-            float b1 = y + std::cos(fraction*i) * radius;
-            float a2 = x + std::sin(fraction*(i+1)) * radius;
-            float b2 = y + std::cos(fraction*(i+1)) * radius;
+        float frac = (PI*2) / (float)segments;
 
-            if( !wireframe )
+        if( !wireframe )
+        {
+            for( int i = 0; i < segments; i++ )
             {
-                push3(  x,  y, orthoDepth ); push4( red, green, blue, alpha );
-                push3( a1, b1, orthoDepth ); push4( red, green, blue, alpha );
-                push3( a2, b2, orthoDepth ); push4( red, green, blue, alpha );
-            } else {
-                line( a1, b1, a2, b2 );
+                pushTriangle(
+                    x,
+                    y,
+                    x + std::sin(frac*i) * radius,
+                    y + std::cos(frac*i) * radius,
+                    x + std::sin(frac*(i+1)) * radius,
+                    y + std::cos(frac*(i+1)) * radius );
+            }
+        } else {
+            float innerRadius = radius - lineWidth;
+
+            for( int i = 0; i < segments; i++ )
+            {
+                pushQuad(
+                    x + std::sin(frac*i) * innerRadius,
+                    y + std::cos(frac*i) * innerRadius,
+                    x + std::sin(frac*i) * radius,
+                    y + std::cos(frac*i) * radius,
+                    x + std::sin(frac*(i+1)) * radius,
+                    y + std::cos(frac*(i+1)) * radius,
+                    x + std::sin(frac*(i+1)) * innerRadius,
+                    y + std::cos(frac*(i+1)) * innerRadius );
             }
         }
     }
@@ -621,6 +764,15 @@ namespace TJH_DRAW_NAMESPACE
 
         }
     }
+    /*
+    void billboard( float x, float y, float z, float width, float height,
+        bool lockx, bool locky, bool lockz )
+    {
+        // TODO: implement me!!!!!!!!!!
+
+        
+    }
+    //*/
 
     // UTILS //////////////////////////////////////////////////////////////////
     GLuint create_shader( GLenum type, const char* source )
@@ -628,7 +780,7 @@ namespace TJH_DRAW_NAMESPACE
         GLuint shader = glCreateShader( type );
         if( shader == 0 )
         {
-            TJH_DRAW_PRINTF("ERROR: cold not create shaders!"); 
+            TJH_DRAW_PRINTF("ERROR: could not create shaders!\n");
             return shader;
         }
 
