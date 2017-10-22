@@ -83,6 +83,8 @@ const GLchar* frag_src = GLSL(
 ////// TODO ////////////////////////////////////////////////////////////////////
 //
 // - write the readme
+// - make sure we can recompile the shader cleanly by setting the source strings
+//   embedding file IO in the shader class is not necessarily best practice, though good for getting stuff going
 // - multiple output buffers
 // - OPTIMISATION: only reload files that changed
 // - test OpenGL ES compatability
