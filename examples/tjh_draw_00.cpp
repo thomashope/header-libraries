@@ -1,10 +1,10 @@
-#define TJH_WINDOW_IMPLEMENTATION
-#include "../tjh_window.h"
 #define TJH_CAMERA_IMPLEMENTATION
 #include "../tjh_camera.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include "../stb_image.h"
+
 #include <glm/gtc/type_ptr.hpp>
+#include <string>
 
 // Define TJH_DRAW_IMPLEMENTATION in ONE .cpp file in your project
 #define TJH_DRAW_IMPLEMENTATION
@@ -22,27 +22,13 @@ Camera camera;
 
 void update_camera( float dt );
 
+GLuint load_texture(std::string filename);
+
 int main()
 {
-	Window::init( __FILE__, WIDTH, HEIGHT );
+	draw::init( __FILE__, WIDTH, HEIGHT );
 
-	Draw::init( 320, 240 );
-
-    GLuint tex;
-    glGenTextures( 1, &tex );
-    glActiveTexture( GL_TEXTURE0 );
-    glBindTexture( GL_TEXTURE_2D, tex );
-    int x,y,n;
-    stbi_set_flip_vertically_on_load( true ); // NOTE: by default STBi points to the top left, openGL expect the bottom left
-    unsigned char *pixels = stbi_load("sample.png", &x, &y, &n, 0);
-    glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, x, y, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels ); 
-    stbi_image_free(pixels);
-
-    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT );
-    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT );
-    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
-    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
-    glGenerateMipmap( GL_TEXTURE_2D );
+    GLuint tex = load_texture("sample.png");
 
 	bool running = true;
 	while( running )
@@ -69,53 +55,62 @@ int main()
 
         update_camera( dt );
 
-		Draw::clear( 0, 0, 0 );
+		draw::clear( 0, 0, 0 );
 
-        // Draw some coloured squares in the corners
-        Draw::setColor( 0, 0, 1 );
-        Draw::quad( 0, 0, 8, 8 );
-        Draw::setColor( 1, 0, 1 );
-        Draw::quad( 312, 0, 8, 8 );
-        Draw::setColor( 0, 1, 1 );
-        Draw::quad( 0, 232, 8, 38 );
-        Draw::setColor( 0.5, 0.5, 0.5 );
-        Draw::circle( 312, 232, 8, 8 );
+        // draw some coloured squares in the corners
+        draw::setColor( 0, 0, 1 );
+        draw::rect( 0, 0, 32, 32 );
 
-        // Draw a bunch of points
+        draw::setColor( 1, 0, 1 );
+        draw::rect( WIDTH, 0, -32, 32 );
+        
+        draw::setColor( 0, 1, 1 );
+        draw::rect( 0, HEIGHT, 32, -32 );
+        
+        draw::setColor( 0.5, 0.5, 0.5 );
+        draw::circle( WIDTH, HEIGHT, 32 );
+
+        draw::setColor( 1, 1, 1 );
+        draw::ellipse( WIDTH/5, HEIGHT/2, 60, 20, 32 );
+
+        draw::wireframe = true;
+        draw::lineWidth = 4;
+
+        draw::setColor( 0.5, 0.5, 0.5 );
+        draw::ellipse( WIDTH/5, HEIGHT/2, 60, 20, 32 );
+
+        draw::wireframe = false;
+
+        // draw a bunch of points
         // Multisampling will make points less than perfect
         for( int i = 100; i < 200; i += 2 ) {
-            Draw::point( i, 220 );
+            draw::point( i, 220 );
         }
 
-        Draw::line( 100, 210, 200, 210 );
+        draw::line( 100, 210, 200, 210 );
 
         // Try a textured shape
         
         glBindTexture( GL_TEXTURE_2D, tex );
-        Draw::texturedQuad( 20, 20, 100, 100 );
 
-        Draw::texturedQuad( 250, 20, 50, 50, 0.2, 0.2, 0.6, 0.6 );
-
-        Draw::texturedTriangle( 200, 20, 240, 20, 200, 60, 0, 0, 1, 0, 0, 1 );
+        draw::texturedRect( 20, 20, 100, 100 );
+        draw::texturedRect( 250, 20, 50, 50, 0, 0, 0.5, 0.5 );
+        draw::texturedTriangle( 200, 20, 240, 20, 200, 60, 0, 0, 1, 0, 0, 1 );
 
         // Try a 3D shape
 
         glm::mat4 mvp = camera.projection( WIDTH, HEIGHT ) * camera.view();
-        Draw::setMVPMatrix( glm::value_ptr( mvp[0] ) );
+        draw::setMVPMatrix( glm::value_ptr( mvp ) );
         
-        Draw::setColor( 0.6, 0.6, 0.6 );
-        Draw::quad( 1, 0, 1, 1, 0, -1, -1, 0, -1, -1, 0, 1 );
-        Draw::setColor( 0.4, 0.4, 0.4 );
-        Draw::triangle( 0, 0, 0, 0, 1, 0, 1, 0, 0 );
+        draw::setColor( 0.6, 0.6, 0.6 );
+        draw::quad( 1, 0, 1, 1, 0, -1, -1, 0, -1, -1, 0, 1 );
+        draw::setColor( 0.4, 0.4, 0.4 );
+        draw::triangle( 0, 0, 0, 0, 1, 0, 1, 0, 0 );
 
-        // Ensure all the graphics is actually drawn
-		Draw::flush();
-
-		Window::present();
+		draw::present();
 	}
 
-	Draw::shutdown();
-	Window::shutdown();
+	draw::shutdown();
 	return 0;
 }
 
@@ -157,4 +152,34 @@ void update_camera( float dt )
     if( keyboard[SDL_SCANCODE_DOWN] ) {
         camera.rotateDown( 3.0f * dt );
     }
+}
+
+GLuint load_texture(std::string filename)
+{
+    GLuint tex;
+    glGenTextures( 1, &tex );
+    glActiveTexture( GL_TEXTURE0 );
+    glBindTexture( GL_TEXTURE_2D, tex );
+
+    int width, height, n;
+    stbi_set_flip_vertically_on_load( true ); // NOTE: by default STBi points to the top left, openGL expect the bottom left
+    unsigned char *pixels = stbi_load(filename.c_str(), &width, &height, &n, 4);
+    if( !pixels )
+    {
+        SDL_Log( "%s", stbi_failure_reason() );
+        return 0;
+    }
+
+    glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels ); 
+    stbi_image_free(pixels);
+
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST );
+    glTexParameteri( GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST );
+    glGenerateMipmap( GL_TEXTURE_2D );
+
+    glBindTexture( GL_TEXTURE_2D, 0 );
+
+    return tex;
 }
