@@ -1,8 +1,3 @@
-#define TJH_WINDOW_NAMESPACE window
-#define TJH_WINDOW_IMPLEMENTATION
-#include "../tjh_window.h"
-
-#define TJH_DRAW_NAMESPACE draw
 #define TJH_DRAW_IMPLEMENTATION
 #include "../tjh_draw.h"
 
@@ -19,8 +14,7 @@ void createFramebuffer( GLuint &framebuffer, GLuint &texture );
 
 int main()
 {
-	window::init( __FILE__, WIDTH, HEIGHT );
-	draw::init( WIDTH, HEIGHT );
+	draw::init( __FILE__, WIDTH, HEIGHT );
 
 	GLuint framebuffer, texture;
 	createFramebuffer( framebuffer, texture );
@@ -49,16 +43,16 @@ int main()
 		draw::setOrthoMatrix( 5, 5, 95, 95 );
 
 		draw::setColor( 1, 1, 1 );
-		draw::quad( 0, 0, 10, 10 );
+		draw::rect( 0, 0, 10, 10 );
 
 		draw::setColor( 1, 0, 0 );
-		draw::quad( 100, 0, -10, 10 );
+		draw::rect( 100, 0, -10, 10 );
 
 		draw::setColor( 0, 1, 0 );
-		draw::quad( 0, 100, 10, -10 );
+		draw::rect( 0, 100, 10, -10 );
 
 		draw::setColor( 0, 0, 1 );
-		draw::quad( 100, 100, -10, -10 );
+		draw::rect( 100, 100, -10, -10 );
 
 		draw::flush();
 
@@ -80,7 +74,7 @@ int main()
 		for( int i = -HEIGHT/2; i < HEIGHT/2; i += 10 )
 			draw::point( 0, i );
 
-		draw::texturedQuad( 10, 10, WIDTH/4.0f, HEIGHT/4.0f );
+		draw::texturedRect( 10, 10, WIDTH/4.0f, HEIGHT/4.0f );
 
 		draw::lineWidth = 2;
 		draw::setColor( 1, 0, 0 );
@@ -93,7 +87,7 @@ int main()
 		draw::lineWidth = std::sin( SDL_GetTicks() / 500.0f ) * 10.0f;
 
 		draw::setColor( 1, 1, 1 );
-		draw::quad( 100, -10, 100, -100 );
+		draw::rect( 100, -10, 100, -100 );
 		draw::triangle( -10, -10, -100, -10, -10, -100 );
 		draw::circle( -120, -120, 40 );
 
@@ -101,7 +95,7 @@ int main()
 		
 		glBindTexture( GL_TEXTURE_2D, 0 );
 
-		window::present();
+		draw::present();
 	}
 
 	// Cleanup resources
@@ -112,7 +106,6 @@ int main()
 	}
 
 	draw::shutdown();
-	window::shutdown();
 
 	return 0;
 }
