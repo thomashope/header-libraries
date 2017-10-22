@@ -112,8 +112,10 @@ public:
 
     // Returns true if shader compilation was a success, false if there was an error
     bool compileAndLink();
+
     // Can be used to explicitly clean up OpenGL resources, automatically called by destructor
     void shutdown();
+
     // If shader source is a file, reloads and recompiles
     // If reloading fails, the shader will not be changed
     // NOTE: things like uniform locations may change as a result!
@@ -156,18 +158,22 @@ public:
     GLuint getProgram() const { return program_; }
 
 private:
+
     // Loads the text file 'filename' and sets file_content to the content of the file
     // returns true on success
     bool load_file( std::string filename, std::string& file_content ) const;
+
     // Tries to compile 'source' as a shader with the given 'type', stores result in 'shader'
     // returns true on success
     bool compile_shader( GLenum type, GLuint& shader, const std::string& source ) const;
+
     // Checks the given shader for errors, printing them if any were found
     // returns true if the shader did compile ok
     bool did_shader_compile_ok( GLuint shader ) const;
 
     // Converts GLenums such as GL_VERTEX_SHADER to a string
     std::string glenum_shader_to_string( GLenum shader ) const;
+
     // Get the size in bytes of a GL_xxx type such as GL_FLOAT or GL_SHORT
     int glenum_type_to_size_in_bytes( GLenum type ) const;
 
