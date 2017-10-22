@@ -183,9 +183,9 @@ namespace TJH_DRAW_NAMESPACE
     void setMVPMatrix( GLfloat* matrix );
     void setViewDirection( float x, float y, float z );
 
-    // PRIMATIVES //////////////////////////////////////////////////////////////
+    // DRAWING ////////////////////////////////////////////////////////////////
     //
-    // 2D
+    // 2D Shapes
     //
 
     void point( float x, float y );
@@ -205,6 +205,15 @@ namespace TJH_DRAW_NAMESPACE
         GLfloat s1, GLfloat t1, GLfloat s2, GLfloat t2, GLfloat s3, GLfloat t3 );
 
     //
+    // 
+    //
+
+    // Have text transparent by default?
+    // with optional background?
+
+    void text( const char* str, float x, float y, float size );
+
+    //
     // 3D
     //
 
@@ -215,8 +224,6 @@ namespace TJH_DRAW_NAMESPACE
         GLfloat x2, GLfloat y2, GLfloat z2,
         GLfloat x3, GLfloat y3, GLfloat z3,
         GLfloat x4, GLfloat y4, GLfloat z4 );
-    //void billboard( float x, float y, float z, float width, float height,
-    //    bool lockx = false, bool locky = false, bool lockz = false );
 }
 
 #endif
@@ -458,6 +465,10 @@ namespace TJH_DRAW_NAMESPACE
         }
 
         glEnable(GL_MULTISAMPLE);
+        
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
         setVsync( true );
 
         const char* colour_3d_vert_src =
@@ -865,6 +876,37 @@ namespace TJH_DRAW_NAMESPACE
     }
 
     //
+    //
+    //
+
+    void text( const char* str, float x, float y, float size )
+    {
+        const float x_start = x;
+
+        for( int i = 0; str[i]; i++ )
+        {
+            if( str[i] == '\n' )
+            {
+                x = x_start;
+                y += size;
+                continue;
+            }
+
+            int c = str[i];
+            int cx = c % 16;
+            int cy = 15 - c / 16;
+
+            texturedRect( x, y, size, size,
+                cx * (1.0f/16.0f),
+                cy * (1.0f/16.0f),
+                1.0f/16.0f,
+                1.0f/16.0f );
+        
+            x += size;
+        }
+    }
+
+    //
     // Colour 3D primatives
     //
     
@@ -904,15 +946,6 @@ namespace TJH_DRAW_NAMESPACE
 
         }
     }
-    /*
-    void billboard( float x, float y, float z, float width, float height,
-        bool lockx, bool locky, bool lockz )
-    {
-        // TODO: implement me!!!!!!!!!!
-
-        
-    }
-    //*/
 
     // UTILS //////////////////////////////////////////////////////////////////
     GLuint create_shader( GLenum type, const char* source )
