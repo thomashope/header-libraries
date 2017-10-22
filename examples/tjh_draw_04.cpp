@@ -23,9 +23,13 @@ int main()
 
 		draw::clear( 0.1, 0.1, 0.1 );
 
+		draw::setColor( 0.9 );
 		draw::texturedRect( 0, 0, 256, 256 );
 
-		draw::text( "You exist,\nthat is enough.", WIDTH/2, 10, 16 );
+		draw::text( "You exist,\nthat is enough.", WIDTH/2, 10 );
+
+		draw::setColor( 0, 0.9, 1 );
+		draw::text( "Sometimes text has color.\nThese are good times,\nremember them.", WIDTH/2, 60, 10 );
 
 		draw::present();
 	}

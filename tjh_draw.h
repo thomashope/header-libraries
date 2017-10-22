@@ -174,6 +174,7 @@ namespace TJH_DRAW_NAMESPACE
     extern bool  wireframe;     //
 
     void setColor( GLfloat r, GLfloat g, GLfloat b, GLfloat a = 1.0f )          { red = r; green = g; blue = b; alpha = a; }
+    void setColor( float c )                                                    { setColor( c, c, c ); }
     void setDepth( GLfloat depth )                                              { orthoDepth = depth; }
     void setLineWidth( GLfloat width )                                          { lineWidth = width; }
     void setWireframe( bool enable )                                            { wireframe = enable; };
@@ -211,7 +212,7 @@ namespace TJH_DRAW_NAMESPACE
     // Have text transparent by default?
     // with optional background?
 
-    void text( const char* str, float x, float y, float size );
+    void text( const char* str, float x, float y, float size = 16 );
 
     //
     // 3D
