@@ -33,7 +33,7 @@ int main()
 		draw::clear(0.1, 0.1, 0.1);
 
 		draw::setColor( 0.5, 0.5, 0.5 );
-		draw::rectangle( x, y, size, size );
+		draw::rect( x, y, size, size );
 
 		x += xSpeed;
 		float newx = clamp(x, 0, WIDTH - size);
